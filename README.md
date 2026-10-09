@@ -1,6 +1,6 @@
 # OrgaFlow
 
-OrgaFlow adalah aplikasi mobile yang dikembangkan oleh **The Winner** untuk membantu pengelolaan organisasi **HIMA Teknik Informatika** secara lebih terstruktur dan terintegrasi.
+OrgaFlow adalah aplikasi mobile yang dikembangkan oleh **Kelompok 4** untuk membantu pengelolaan organisasi **HIMA Teknik Informatika** secara lebih terstruktur dan terintegrasi.
 
 Aplikasi ini menyediakan berbagai fitur untuk mendukung kebutuhan organisasi, seperti pengelolaan anggota dan divisi, kegiatan, tugas, absensi, pengumuman, keuangan, dokumen, serta notifikasi. OrgaFlow juga menerapkan **role-based access** sehingga setiap pengguna dapat mengakses fitur sesuai dengan peran dan tanggung jawabnya dalam organisasi.
 
