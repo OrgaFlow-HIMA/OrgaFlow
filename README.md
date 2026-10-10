@@ -14,3 +14,5 @@ Project ini dikembangkan menggunakan **Flutter** dan **Dart** dengan dukungan **
 - **Zikri Hadi Saputra** — [@Zikrual](https://github.com/Zikrual)
 - **Kevin Yulian Pamungkas** — [@kvinn-dev](https://github.com/kvinn-dev)
 - **Tania Azzahra** — [@taniaazzahra-06](https://github.com/taniaazzahra-06)
+
+ujang petot
