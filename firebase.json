@@ -1,0 +1,39 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "orgaflow-app",
+          "appId": "1:917068683588:android:c2a336732a1596c17ddf11",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "orgaflow-app",
+          "appId": "1:917068683588:ios:763ba06b6a5d47577ddf11",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "macos": {
+        "default": {
+          "projectId": "orgaflow-app",
+          "appId": "1:917068683588:ios:763ba06b6a5d47577ddf11",
+          "uploadDebugSymbols": false,
+          "fileOutput": "macos/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "orgaflow-app",
+          "configurations": {
+            "android": "1:917068683588:android:c2a336732a1596c17ddf11",
+            "ios": "1:917068683588:ios:763ba06b6a5d47577ddf11",
+            "macos": "1:917068683588:ios:763ba06b6a5d47577ddf11"
+          }
+        }
+      }
+    }
+  }
+}
