@@ -13,6 +13,7 @@ import '../tasks/bendahara_tugas_page.dart';
 import '../tasks/ketua_tugas_page.dart';
 import '../tasks/sekretaris_tugas_page.dart';
 import '../tasks/wakil_ketua_tugas_page.dart';
+import '../users/add_user_screen.dart';
 import 'models/management_dashboard_content.dart';
 import 'views/management_home_view.dart';
 
@@ -23,6 +24,7 @@ export '../tasks/bendahara_tugas_page.dart';
 export '../tasks/ketua_tugas_page.dart';
 export '../tasks/sekretaris_tugas_page.dart';
 export '../tasks/wakil_ketua_tugas_page.dart';
+export '../users/add_user_screen.dart';
 export 'models/management_dashboard_content.dart';
 export 'views/management_home_view.dart';
 
@@ -53,11 +55,35 @@ class _ManagementDashboardState extends State<ManagementDashboard> {
       widget.profile.role == UserRole.bendahara ||
       widget.profile.role == UserRole.sekretaris;
 
+  /// Hanya Sekretaris yang memiliki tab pendaftaran pengguna baru (Tambah User).
+  bool get _isSekretaris => widget.profile.role == UserRole.sekretaris;
+
   List<ManagementNavItem> get _navItems {
+    final items = <ManagementNavItem>[
+      const ManagementNavItem(label: 'Beranda', icon: Icons.dashboard_outlined),
+      const ManagementNavItem(label: 'Tugas', icon: Icons.assignment_outlined),
+      const ManagementNavItem(label: 'Agenda', icon: Icons.event_available_outlined),
+    ];
+
     if (_canAccessKas) {
-      return managementNavItems;
+      items.add(
+        const ManagementNavItem(
+          label: 'Kas',
+          icon: Icons.account_balance_wallet_outlined,
+        ),
+      );
     }
-    return managementNavItems.where((item) => item.label != 'Kas').toList();
+
+    if (_isSekretaris) {
+      items.add(
+        const ManagementNavItem(
+          label: 'Tambah User',
+          icon: Icons.person_add_alt_1_outlined,
+        ),
+      );
+    }
+
+    return items;
   }
 
   Future<void> _handleLogout(BuildContext context) async {
@@ -134,8 +160,8 @@ class _ManagementDashboardState extends State<ManagementDashboard> {
         backgroundColor: AppTheme.surface,
         selectedItemColor: AppTheme.primaryBlue,
         unselectedItemColor: AppTheme.textSecondary,
-        selectedFontSize: 12,
-        unselectedFontSize: 12,
+        selectedFontSize: 11,
+        unselectedFontSize: 11,
         items: navItems
             .map(
               (page) => BottomNavigationBarItem(
@@ -149,14 +175,18 @@ class _ManagementDashboardState extends State<ManagementDashboard> {
   }
 
   Widget _buildCurrentTab() {
-    switch (_selectedIndex) {
-      case 0:
+    final navItems = _navItems;
+    final currentLabel =
+        navItems[_selectedIndex.clamp(0, navItems.length - 1)].label;
+
+    switch (currentLabel) {
+      case 'Beranda':
         return ManagementHomeView(
           profile: widget.profile,
           divisionNameLoader: widget.divisionNameLoader,
           onLogout: () => _handleLogout(context),
         );
-      case 1:
+      case 'Tugas':
         // Routing Halaman Tugas Sesuai Role
         if (widget.profile.role == UserRole.ketua) {
           return const KetuaTugasPage();
@@ -168,19 +198,17 @@ class _ManagementDashboardState extends State<ManagementDashboard> {
           return const SekretarisTugasPage();
         }
         return _buildPlaceholderPage('Tugas');
-      case 2:
+      case 'Agenda':
         return const AgendaPage();
-      case 3:
+      case 'Kas':
         if (_canAccessKas) {
           return FinancePage(userRole: widget.profile.role);
         }
         return _buildPlaceholderPage('Akses Ditolak');
+      case 'Tambah User':
+        return const AddUserPage();
       default:
-        final navItems = _navItems;
-        final label = _selectedIndex < navItems.length
-            ? navItems[_selectedIndex].label
-            : 'Halaman';
-        return _buildPlaceholderPage(label);
+        return _buildPlaceholderPage(currentLabel);
     }
   }
 

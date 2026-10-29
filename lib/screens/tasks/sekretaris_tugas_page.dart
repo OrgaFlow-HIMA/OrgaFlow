@@ -280,26 +280,31 @@ class _SekretarisTugasPageState extends State<SekretarisTugasPage> {
   }
 
   Widget _buildSearchBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.borderLight),
-      ),
-      child: const TextField(
-        style: TextStyle(fontSize: 13, color: AppTheme.textPrimary),
-        decoration: InputDecoration(
-          icon: Icon(
-            Icons.search_rounded,
-            size: 18,
-            color: AppTheme.textSecondary,
-          ),
-          hintText: 'Cari surat, notula, atau divisi...',
-          hintStyle: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
-          border: InputBorder.none,
-          isDense: true,
-          contentPadding: EdgeInsets.symmetric(vertical: 10),
+    return TextField(
+      style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary),
+      decoration: InputDecoration(
+        prefixIcon: const Icon(
+          Icons.search_rounded,
+          size: 18,
+          color: AppTheme.textSecondary,
+        ),
+        hintText: 'Cari surat, notula, atau divisi...',
+        hintStyle: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+        filled: true,
+        fillColor: AppTheme.surface,
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(vertical: 12),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppTheme.borderLight),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppTheme.borderLight),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 1.5),
         ),
       ),
     );
