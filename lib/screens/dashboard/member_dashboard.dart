@@ -11,7 +11,6 @@ import '../../services/auth_service.dart';
 import '../../widgets/confirmation_dialog.dart';
 
 import '../../services/division_service.dart';
-import '../../widgets/confirmation_dialog.dart';
 import '../../widgets/division_name_text.dart';
 import '../../widgets/role_badge.dart';
 
@@ -274,12 +273,12 @@ class MemberDashboard extends StatelessWidget {
         children: [
           // Badge ANGGOTA
 
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.start,
             children: [
               RoleBadge(role: profile.role),
-
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,
@@ -287,20 +286,14 @@ class MemberDashboard extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   color: AppTheme.anggotaBg,
-
                   borderRadius: BorderRadius.circular(6),
-
                   border: Border.all(color: AppTheme.anggotaBorder),
                 ),
-
                 child: const Text(
                   'Anggota Aktif',
-
                   style: TextStyle(
                     fontSize: 11,
-
                     fontWeight: FontWeight.w700,
-
                     color: AppTheme.anggotaPrimary,
                   ),
                 ),
@@ -458,12 +451,9 @@ class MemberDashboard extends StatelessWidget {
 
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-
         crossAxisSpacing: 12,
-
         mainAxisSpacing: 12,
-
-        childAspectRatio: 1.15,
+        childAspectRatio: 0.95,
       ),
 
       itemCount: items.length,
@@ -622,18 +612,18 @@ class _MemberPlaceholderPage extends StatelessWidget {
         automaticallyImplyLeading: false,
         title: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryBlue,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.hub_rounded,
-                color: Colors.white,
-                size: 18,
-              ),
-            ),
+            // Container(
+            //   padding: const EdgeInsets.all(6),
+            //   decoration: BoxDecoration(
+            //     color: AppTheme.primaryBlue,
+            //     borderRadius: BorderRadius.circular(8),
+            //   ),
+            //   child: const Icon(
+            //     Icons.hub_rounded,
+            //     color: Colors.white,
+            //     size: 18,
+            //   ),
+            // ),
             const SizedBox(width: 10),
             const Text(
               AppConstants.appName,

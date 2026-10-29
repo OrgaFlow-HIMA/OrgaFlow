@@ -54,18 +54,18 @@ class _ManagementDashboardState extends State<ManagementDashboard> {
       appBar: AppBar(
         title: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryBlue,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.hub_rounded,
-                color: Colors.white,
-                size: 18,
-              ),
-            ),
+            // Container(
+            //   padding: const EdgeInsets.all(6),
+            //   decoration: BoxDecoration(
+            //     color: AppTheme.primaryBlue,
+            //     borderRadius: BorderRadius.circular(8),
+            //   ),
+            //   child: const Icon(
+            //     Icons.hub_rounded,
+            //     color: Colors.white,
+            //     size: 18,
+            //   ),
+            // ),
             const SizedBox(width: 10),
             const Text(
               AppConstants.appName,
@@ -2096,7 +2096,7 @@ class _WakilKetuaTugasPageState extends State<WakilKetuaTugasPage> {
             icon: Icons.developer_board_rounded,
             iconColor: AppTheme.primaryBlue,
             iconBg: AppTheme.lightBlue,
-            title: 'Riset & Teknologi (Iptek)',
+            title: 'Riset & Teknologi',
             pic: 'Farhan Ramadhan',
             statusTag: 'Sesuai Jadwal',
             statusBg: const Color(0xFFDCFCE7),
@@ -2309,7 +2309,7 @@ class _WakilKetuaTugasPageState extends State<WakilKetuaTugasPage> {
                 ),
                 SizedBox(width: 6),
                 Text(
-                  '2 Perlu Koord',
+                  '2 Perlu Koordinasi',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -3988,7 +3988,7 @@ class KasPage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: const Text(
-                '! Prioritas Tinggi',
+                'Prioritas Tinggi',
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
