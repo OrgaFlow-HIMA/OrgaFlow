@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_orgaflow/screens/approval/dekan_approval_page.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
@@ -9,7 +10,6 @@ import '../../services/division_service.dart';
 import '../../widgets/confirmation_dialog.dart';
 import '../agenda/agenda_page.dart';
 import '../finance/finance_page.dart';
-import '../tasks/dekan_tugas_page.dart';
 import '../tasks/bendahara_tugas_page.dart';
 import '../tasks/ketua_tugas_page.dart';
 import '../tasks/sekretaris_tugas_page.dart';
@@ -26,6 +26,7 @@ export '../tasks/dekan_tugas_page.dart';
 export '../tasks/ketua_tugas_page.dart';
 export '../tasks/sekretaris_tugas_page.dart';
 export '../tasks/wakil_ketua_tugas_page.dart';
+export '../approval/dekan_approval_page.dart';
 export '../users/add_user_screen.dart';
 export 'models/management_dashboard_content.dart';
 export 'views/management_home_view.dart';
@@ -219,9 +220,7 @@ class _ManagementDashboardState extends State<ManagementDashboard> {
         );
       case 'Tugas':
         // Routing Halaman Tugas Sesuai Role
-        if (widget.profile.role == UserRole.dekan) {
-          return const DekanTugasPage();
-        } else if (widget.profile.role == UserRole.ketua) {
+        if (widget.profile.role == UserRole.ketua) {
           return const KetuaTugasPage();
         } else if (widget.profile.role == UserRole.wakilKetua) {
           return const WakilKetuaTugasPage();
@@ -233,11 +232,19 @@ class _ManagementDashboardState extends State<ManagementDashboard> {
         return _buildPlaceholderPage('Tugas');
       case 'Agenda':
         return const AgendaPage();
-      case 'Kas':
+
+      case 'Persetujuan':
+        if (_canAccessApproval) {
+          return DekanApprovalPage();
+        }
+        return _buildPlaceholderPage('Akses Ditolak');
+
+      case 'Keuangan':
         if (_canAccessKas) {
           return FinancePage(userRole: widget.profile.role);
         }
         return _buildPlaceholderPage('Akses Ditolak');
+
       case 'Pengguna':
         return const AddUserPage();
       default:
