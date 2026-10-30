@@ -6,6 +6,7 @@ import 'ketua_tugas_page.dart';
 import 'member_tugas_page.dart';
 import 'sekretaris_tugas_page.dart';
 import 'wakil_ketua_tugas_page.dart';
+import 'dekan_tugas_page.dart';
 
 class TasksPage extends StatelessWidget {
   final UserRole role;
@@ -15,6 +16,8 @@ class TasksPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     switch (role) {
+      case UserRole.dekan:
+        return const DekanTugasPage();
       case UserRole.ketua:
         return const KetuaTugasPage();
       case UserRole.wakilKetua:
@@ -29,4 +32,3 @@ class TasksPage extends StatelessWidget {
     }
   }
 }
-

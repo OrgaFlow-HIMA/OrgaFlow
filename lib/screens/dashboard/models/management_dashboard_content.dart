@@ -63,6 +63,38 @@ const List<ManagementNavItem> managementNavItems = [
 ];
 
 const Map<UserRole, ManagementDashboardContent> dashboardByRole = {
+  UserRole.dekan: ManagementDashboardContent(
+    firstSummary: SummaryCardContent(
+      title: 'Persetujuan Dekanat',
+      value: '1 Menunggu',
+      subtitle: 'Perlu ditinjau',
+      icon: Icons.rule_rounded,
+    ),
+    secondSummary: SummaryCardContent(
+      title: 'Proker Berjalan',
+      value: '2 Proker',
+      subtitle: 'Dari total 6 proker',
+      icon: Icons.account_balance_rounded,
+    ),
+    approvalTitle: 'Persetujuan Penting Dekanat',
+    pendingCount: 2,
+    approvals: [
+      ApprovalCardContent(
+        title: 'Proposal IT Fest (Rekomendasi Dekanat)',
+        status: 'Menunggu Persetujuan',
+        dueLabel: 'Hari ini, 20:00 WIB',
+        dueIcon: Icons.access_time_rounded,
+        actionLabel: 'Tinjau Proposal',
+      ),
+      ApprovalCardContent(
+        title: 'LPJ Makrab Mahasiswa Baru',
+        status: 'Menunggu',
+        dueLabel: 'Besok, 17:00 WIB',
+        dueIcon: Icons.event_outlined,
+        actionLabel: 'Lihat Detail',
+      ),
+    ],
+  ),
   UserRole.ketua: ManagementDashboardContent(
     firstSummary: SummaryCardContent(
       title: 'Persetujuan',
@@ -224,4 +256,3 @@ const Map<UserRole, ManagementDashboardContent> dashboardByRole = {
     ],
   ),
 };
-
