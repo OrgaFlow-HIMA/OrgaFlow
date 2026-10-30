@@ -9,6 +9,7 @@ import '../../services/division_service.dart';
 import '../../widgets/confirmation_dialog.dart';
 import '../agenda/agenda_page.dart';
 import '../finance/finance_page.dart';
+import '../tasks/dekan_tugas_page.dart';
 import '../tasks/bendahara_tugas_page.dart';
 import '../tasks/ketua_tugas_page.dart';
 import '../tasks/sekretaris_tugas_page.dart';
@@ -21,6 +22,7 @@ import 'views/management_home_view.dart';
 export '../agenda/agenda_page.dart';
 export '../finance/finance_page.dart';
 export '../tasks/bendahara_tugas_page.dart';
+export '../tasks/dekan_tugas_page.dart';
 export '../tasks/ketua_tugas_page.dart';
 export '../tasks/sekretaris_tugas_page.dart';
 export '../tasks/wakil_ketua_tugas_page.dart';
@@ -47,13 +49,22 @@ class ManagementDashboard extends StatefulWidget {
 class _ManagementDashboardState extends State<ManagementDashboard> {
   int _selectedIndex = 0;
 
-  /// Hanya Ketua, Wakil Ketua, Bendahara, dan Sekretaris yang memiliki akses ke fitur Keuangan/Kas.
+  /// Hanya Dekan, Ketua, Wakil Ketua, Bendahara, dan Sekretaris yang memiliki akses ke fitur Keuangan/Kas.
   /// Kepala Divisi (Kadiv) tidak memiliki akses.
   bool get _canAccessKas =>
+      widget.profile.role == UserRole.dekan ||
       widget.profile.role == UserRole.ketua ||
       widget.profile.role == UserRole.wakilKetua ||
       widget.profile.role == UserRole.bendahara ||
       widget.profile.role == UserRole.sekretaris;
+
+  bool get _canAccessTasks =>
+      widget.profile.role == UserRole.ketua ||
+      widget.profile.role == UserRole.wakilKetua ||
+      widget.profile.role == UserRole.bendahara ||
+      widget.profile.role == UserRole.sekretaris;
+
+  bool get _canAccessApproval => widget.profile.role == UserRole.dekan;
 
   /// Hanya Sekretaris yang memiliki tab pendaftaran pengguna baru (Tambah User).
   bool get _isSekretaris => widget.profile.role == UserRole.sekretaris;
@@ -61,17 +72,34 @@ class _ManagementDashboardState extends State<ManagementDashboard> {
   List<ManagementNavItem> get _navItems {
     final items = <ManagementNavItem>[
       const ManagementNavItem(label: 'Beranda', icon: Icons.dashboard_outlined),
-      const ManagementNavItem(label: 'Tugas', icon: Icons.assignment_outlined),
       const ManagementNavItem(
         label: 'Agenda',
         icon: Icons.event_available_outlined,
       ),
     ];
 
+    if (_canAccessTasks) {
+      items.add(
+        const ManagementNavItem(
+          label: 'Tugas',
+          icon: Icons.assignment_outlined,
+        ),
+      );
+    }
+
+    if (_canAccessApproval) {
+      items.add(
+        const ManagementNavItem(
+          label: 'Persetujuan',
+          icon: Icons.approval_outlined,
+        ),
+      );
+    }
+
     if (_canAccessKas) {
       items.add(
         const ManagementNavItem(
-          label: 'Kas',
+          label: 'Keuangan',
           icon: Icons.account_balance_wallet_outlined,
         ),
       );
@@ -191,7 +219,9 @@ class _ManagementDashboardState extends State<ManagementDashboard> {
         );
       case 'Tugas':
         // Routing Halaman Tugas Sesuai Role
-        if (widget.profile.role == UserRole.ketua) {
+        if (widget.profile.role == UserRole.dekan) {
+          return const DekanTugasPage();
+        } else if (widget.profile.role == UserRole.ketua) {
           return const KetuaTugasPage();
         } else if (widget.profile.role == UserRole.wakilKetua) {
           return const WakilKetuaTugasPage();

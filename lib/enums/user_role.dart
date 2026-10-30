@@ -1,6 +1,7 @@
 /// Definisi enam role resmi dalam organisasi OrgaFlow (HIMA TI).
 /// Tidak ada role ketujuh bernama Admin.
 enum UserRole {
+  dekan,
   ketua,
   wakilKetua,
   sekretaris,
@@ -11,6 +12,8 @@ enum UserRole {
   /// Nilai string yang tersimpan di Cloud Firestore
   String get firestoreValue {
     switch (this) {
+      case UserRole.dekan:
+        return 'dekan';
       case UserRole.ketua:
         return 'ketua';
       case UserRole.wakilKetua:
@@ -29,6 +32,8 @@ enum UserRole {
   /// Label resmi dalam Bahasa Indonesia untuk tampilan antarmuka
   String get label {
     switch (this) {
+      case UserRole.dekan:
+        return 'Dekan';
       case UserRole.ketua:
         return 'Ketua';
       case UserRole.wakilKetua:
@@ -60,6 +65,8 @@ enum UserRole {
     if (value == null) return null;
     final normalized = value.trim().toLowerCase();
     switch (normalized) {
+      case 'dekan':
+        return UserRole.dekan;
       case 'ketua':
         return UserRole.ketua;
       case 'wakil_ketua':
