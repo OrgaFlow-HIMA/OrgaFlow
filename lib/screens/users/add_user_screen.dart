@@ -222,8 +222,8 @@ class _AddUserPageState extends State<AddUserPage> {
         children: [
           _buildPageHeader(),
           const SizedBox(height: 20),
-          _buildSecretaryNoticeBanner(),
-          const SizedBox(height: 24),
+          // _buildSecretaryNoticeBanner(),
+          // const SizedBox(height: 24),
           _buildRegistrationForm(),
           const SizedBox(height: 32),
           _buildRecentRegisteredUsersHeader(),
@@ -266,51 +266,51 @@ class _AddUserPageState extends State<AddUserPage> {
   // ─────────────────────────────────────────────────────────────
   // NOTICE BANNER
   // ─────────────────────────────────────────────────────────────
-  Widget _buildSecretaryNoticeBanner() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppTheme.lightBlue,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.borderLight),
-      ),
-      child: const Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            Icons.admin_panel_settings_rounded,
-            color: AppTheme.primaryBlue,
-            size: 22,
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Akses Khusus Sekretaris',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.textPrimary,
-                  ),
-                ),
-                SizedBox(height: 2),
-                Text(
-                  'Sekretaris memiliki wewenang untuk mendaftarkan akun baru bagi Anggota (Member) maupun Pengurus (Management).',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.textSecondary,
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // Widget _buildSecretaryNoticeBanner() {
+  //   return Container(
+  //     padding: const EdgeInsets.all(14),
+  //     decoration: BoxDecoration(
+  //       color: AppTheme.lightBlue,
+  //       borderRadius: BorderRadius.circular(14),
+  //       border: Border.all(color: AppTheme.borderLight),
+  //     ),
+  //     child: const Row(
+  //       crossAxisAlignment: CrossAxisAlignment.start,
+  //       children: [
+  //         Icon(
+  //           Icons.admin_panel_settings_rounded,
+  //           color: AppTheme.primaryBlue,
+  //           size: 22,
+  //         ),
+  //         SizedBox(width: 12),
+  //         Expanded(
+  //           child: Column(
+  //             crossAxisAlignment: CrossAxisAlignment.start,
+  //             children: [
+  //               Text(
+  //                 'Akses Khusus Sekretaris',
+  //                 style: TextStyle(
+  //                   fontSize: 13,
+  //                   fontWeight: FontWeight.w700,
+  //                   color: AppTheme.textPrimary,
+  //                 ),
+  //               ),
+  //               SizedBox(height: 2),
+  //               Text(
+  //                 'Sekretaris memiliki wewenang untuk mendaftarkan akun baru bagi Anggota (Member) maupun Pengurus (Management).',
+  //                 style: TextStyle(
+  //                   fontSize: 11,
+  //                   color: AppTheme.textSecondary,
+  //                   height: 1.4,
+  //                 ),
+  //               ),
+  //             ],
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   // ─────────────────────────────────────────────────────────────
   // REGISTRATION FORM CARD
@@ -442,17 +442,40 @@ class _AddUserPageState extends State<AddUserPage> {
             ],
             DropdownButtonFormField<String>(
               value: _selectedDivisi,
+              isExpanded: true,
+
+              selectedItemBuilder: (context) {
+                return _daftarDivisi.map((divisi) {
+                  return Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      divisi,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 13, color: Colors.black),
+                    ),
+                  );
+                }).toList();
+              },
+
               decoration: _inputDecoration(
                 label: 'Penempatan Divisi',
                 icon: Icons.corporate_fare_rounded,
                 isRequired: true,
               ),
-              items: _daftarDivisi
-                  .map(
-                    (divisi) =>
-                        DropdownMenuItem(value: divisi, child: Text(divisi)),
-                  )
-                  .toList(),
+
+              items: _daftarDivisi.map((divisi) {
+                return DropdownMenuItem<String>(
+                  value: divisi,
+                  child: Text(
+                    divisi,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                );
+              }).toList(),
+
               onChanged: (divisi) {
                 if (divisi != null) {
                   setState(() => _selectedDivisi = divisi);
@@ -605,6 +628,7 @@ class _AddUserPageState extends State<AddUserPage> {
       validator: validator,
       decoration: InputDecoration(
         labelText: isRequired ? '$label *' : label,
+        labelStyle: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
         hintText: hint,
         hintStyle: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
         prefixIcon: Icon(icon, size: 20),

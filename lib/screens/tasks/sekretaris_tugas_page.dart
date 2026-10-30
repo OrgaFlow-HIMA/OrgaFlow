@@ -46,26 +46,26 @@ class _SekretarisTugasPageState extends State<SekretarisTugasPage> {
                   ),
                 ],
               ),
-              FilledButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.add_rounded, size: 16),
-                label: const Text('Tugas'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppTheme.primaryBlue,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  textStyle: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
+              // FilledButton.icon(
+              //   onPressed: () {},
+              //   icon: const Icon(Icons.add_rounded, size: 16),
+              //   label: const Text('Tugas'),
+              //   style: FilledButton.styleFrom(
+              //     backgroundColor: AppTheme.primaryBlue,
+              //     foregroundColor: Colors.white,
+              //     padding: const EdgeInsets.symmetric(
+              //       horizontal: 12,
+              //       vertical: 8,
+              //     ),
+              //     shape: RoundedRectangleBorder(
+              //       borderRadius: BorderRadius.circular(10),
+              //     ),
+              //     textStyle: const TextStyle(
+              //       fontSize: 12,
+              //       fontWeight: FontWeight.w700,
+              //     ),
+              //   ),
+              // ),
             ],
           ),
           const SizedBox(height: 14),
@@ -358,7 +358,7 @@ class _SekretarisTugasPageState extends State<SekretarisTugasPage> {
                         size: 8,
                         color: AppTheme.error,
                       ),
-                      SizedBox(width: 4),
+                      SizedBox(width: 1.5),
                       Text(
                         'Menunggu Persetujuan',
                         style: TextStyle(
@@ -550,7 +550,7 @@ class _SekretarisTugasPageState extends State<SekretarisTugasPage> {
                         size: 8,
                         color: AppTheme.textSecondary,
                       ),
-                      SizedBox(width: 4),
+                      SizedBox(width: 1.5),
                       Text(
                         'Menunggu Review',
                         style: TextStyle(

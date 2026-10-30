@@ -62,7 +62,10 @@ class _ManagementDashboardState extends State<ManagementDashboard> {
     final items = <ManagementNavItem>[
       const ManagementNavItem(label: 'Beranda', icon: Icons.dashboard_outlined),
       const ManagementNavItem(label: 'Tugas', icon: Icons.assignment_outlined),
-      const ManagementNavItem(label: 'Agenda', icon: Icons.event_available_outlined),
+      const ManagementNavItem(
+        label: 'Agenda',
+        icon: Icons.event_available_outlined,
+      ),
     ];
 
     if (_canAccessKas) {
@@ -77,7 +80,7 @@ class _ManagementDashboardState extends State<ManagementDashboard> {
     if (_isSekretaris) {
       items.add(
         const ManagementNavItem(
-          label: 'Tambah User',
+          label: 'Pengguna',
           icon: Icons.person_add_alt_1_outlined,
         ),
       );
@@ -205,7 +208,7 @@ class _ManagementDashboardState extends State<ManagementDashboard> {
           return FinancePage(userRole: widget.profile.role);
         }
         return _buildPlaceholderPage('Akses Ditolak');
-      case 'Tambah User':
+      case 'Pengguna':
         return const AddUserPage();
       default:
         return _buildPlaceholderPage(currentLabel);

@@ -63,19 +63,19 @@ class _MemberDashboardState extends State<MemberDashboard> {
       appBar: AppBar(
         title: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryBlue,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.hub_rounded,
-                color: Colors.white,
-                size: 18,
-              ),
-            ),
-            const SizedBox(width: 10),
+            // Container(
+            //   padding: const EdgeInsets.all(6),
+            //   decoration: BoxDecoration(
+            //     color: AppTheme.primaryBlue,
+            //     borderRadius: BorderRadius.circular(8),
+            //   ),
+            //   child: const Icon(
+            //     Icons.hub_rounded,
+            //     color: Colors.white,
+            //     size: 18,
+            //   ),
+            // ),
+            // const SizedBox(width: 10),
             const Text(
               AppConstants.appName,
               style: TextStyle(
