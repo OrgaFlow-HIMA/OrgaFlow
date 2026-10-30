@@ -37,6 +37,7 @@ class _MemberDashboardState extends State<MemberDashboard> {
     _MemberNavItem(label: 'Beranda', icon: Icons.grid_view_rounded),
     _MemberNavItem(label: 'Tugas', icon: Icons.assignment_outlined),
     _MemberNavItem(label: 'Agenda', icon: Icons.event_available_outlined),
+    _MemberNavItem(label: 'Kas', icon: Icons.account_balance_wallet_outlined),
   ];
 
   Future<void> _handleLogout(BuildContext context) async {
