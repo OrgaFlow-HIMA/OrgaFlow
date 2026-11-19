@@ -343,8 +343,8 @@ class ProfilePage extends StatelessWidget {
                       : Future.value(profile.role.label),
                   builder: (context, snapshot) {
                     final label =
-                        (profile.divisiId != null && snapshot.data != null)
-                        ? 'Divisi ${snapshot.data}'
+                        profile.divisiId != null && snapshot.data != null
+                        ? snapshot.data!
                         : profile.role.label;
                     return Text(
                       label,

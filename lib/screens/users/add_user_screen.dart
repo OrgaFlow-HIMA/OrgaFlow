@@ -131,11 +131,13 @@ class _AddUserPageState extends State<AddUserPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
-            Icon(Icons.check_circle_rounded, color: AppTheme.success, size: 24),
+            Icon(Icons.check_circle_rounded, color: AppTheme.success, size: 22),
             SizedBox(width: 8),
-            Text(
-              'Pengguna Terdaftar!',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            Expanded(
+              child: Text(
+                'Pengguna Terdaftar!',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
             ),
           ],
         ),
@@ -146,12 +148,14 @@ class _AddUserPageState extends State<AddUserPage> {
             Text(
               'Akun untuk ${user.nama} berhasil didaftarkan dan disimpan ke database.',
               style: const TextStyle(
-                fontSize: 13,
+                fontSize: 12,
                 color: AppTheme.textSecondary,
+                height: 1.4,
               ),
             ),
             const SizedBox(height: 12),
             Container(
+              width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: AppTheme.background,
@@ -163,30 +167,33 @@ class _AddUserPageState extends State<AddUserPage> {
                   Text(
                     'Email: ${user.email}',
                     style: const TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
+                  const SizedBox(height: 2),
                   Text(
                     'Role: ${user.role.label}',
                     style: const TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
+                  const SizedBox(height: 2),
                   Text(
                     'Divisi: ${user.divisiId ?? '-'}',
                     style: const TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       color: AppTheme.textSecondary,
                     ),
                   ),
+                  const SizedBox(height: 6),
                   Text(
                     user.wajibGantiPassword
                         ? 'Wajib ganti password pada login pertama'
                         : 'Password langsung aktif',
                     style: const TextStyle(
-                      fontSize: 11,
+                      fontSize: 10,
                       color: AppTheme.primaryBlue,
                       fontWeight: FontWeight.w500,
                     ),
@@ -201,7 +208,7 @@ class _AddUserPageState extends State<AddUserPage> {
             onPressed: () => Navigator.pop(ctx),
             child: const Text(
               'Tutup',
-              style: TextStyle(fontWeight: FontWeight.w700),
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
             ),
           ),
         ],
@@ -217,9 +224,9 @@ class _AddUserPageState extends State<AddUserPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildPageHeader(),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           _buildRegistrationForm(),
-          const SizedBox(height: 32),
+          const SizedBox(height: 28),
           _buildRecentUsersSection(),
         ],
       ),
@@ -236,17 +243,17 @@ class _AddUserPageState extends State<AddUserPage> {
         const Text(
           'Tambah Pengguna Baru',
           style: TextStyle(
-            fontSize: 22,
+            fontSize: 18,
             fontWeight: FontWeight.w800,
             color: AppTheme.textPrimary,
-            letterSpacing: -0.5,
+            letterSpacing: -0.3,
           ),
         ),
         const SizedBox(height: 4),
-        Text(
+        const Text(
           'Daftarkan akun anggota baru atau jajaran pengurus organisasi',
           style: TextStyle(
-            fontSize: 13,
+            fontSize: 12,
             color: AppTheme.textSecondary,
             height: 1.4,
           ),
@@ -260,7 +267,7 @@ class _AddUserPageState extends State<AddUserPage> {
   // ─────────────────────────────────────────────────────────────
   Widget _buildRegistrationForm() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(16),
@@ -277,12 +284,12 @@ class _AddUserPageState extends State<AddUserPage> {
               title: 'Kategori Akun',
               subtitle: 'Tentukan apakah akun untuk anggota atau pengurus',
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             _buildCategorySelector(),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             const Divider(height: 1),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             // ── STEP 2: Informasi Pribadi ──
             _buildSectionLabel(
@@ -290,7 +297,7 @@ class _AddUserPageState extends State<AddUserPage> {
               title: 'Informasi Pribadi & Akun',
               subtitle: 'Data dasar untuk identitas pengguna',
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             _buildTextField(
               controller: _namaController,
               label: 'Nama Lengkap',
@@ -307,7 +314,7 @@ class _AddUserPageState extends State<AddUserPage> {
                 return null;
               },
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             _buildTextField(
               controller: _emailController,
               label: 'Alamat Email',
@@ -325,7 +332,7 @@ class _AddUserPageState extends State<AddUserPage> {
                 return null;
               },
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             _buildTextField(
               controller: _nimController,
               label: 'NIM (Nomor Induk Mahasiswa)',
@@ -333,10 +340,10 @@ class _AddUserPageState extends State<AddUserPage> {
               icon: Icons.numbers_rounded,
               keyboardType: TextInputType.number,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             const Divider(height: 1),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             // ── STEP 3: Peran & Divisi ──
             _buildSectionLabel(
@@ -344,7 +351,7 @@ class _AddUserPageState extends State<AddUserPage> {
               title: 'Peran & Penempatan Divisi',
               subtitle: 'Atur hak akses dan posisi dalam organisasi',
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             if (_selectedCategory == UserCategory.management) ...[
               DropdownButtonFormField<UserRole>(
                 value: _selectedRole,
@@ -378,15 +385,14 @@ class _AddUserPageState extends State<AddUserPage> {
                   }
                 },
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
             ] else ...[
               _buildMemberRoleNotice(),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
             ],
             DropdownButtonFormField<String>(
               value: _selectedDivisi,
               isExpanded: true,
-
               selectedItemBuilder: (context) {
                 return _daftarDivisi.map((divisi) {
                   return Align(
@@ -395,18 +401,19 @@ class _AddUserPageState extends State<AddUserPage> {
                       divisi,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 13, color: Colors.black),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.textPrimary,
+                      ),
                     ),
                   );
                 }).toList();
               },
-
               decoration: _inputDecoration(
                 label: 'Penempatan Divisi',
                 icon: Icons.corporate_fare_rounded,
                 isRequired: true,
               ),
-
               items: _daftarDivisi.map((divisi) {
                 return DropdownMenuItem<String>(
                   value: divisi,
@@ -418,17 +425,16 @@ class _AddUserPageState extends State<AddUserPage> {
                   ),
                 );
               }).toList(),
-
               onChanged: (divisi) {
                 if (divisi != null) {
                   setState(() => _selectedDivisi = divisi);
                 }
               },
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             const Divider(height: 1),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
             // ── STEP 4: Pengaturan Keamanan ──
             _buildSectionLabel(
@@ -436,7 +442,7 @@ class _AddUserPageState extends State<AddUserPage> {
               title: 'Status & Keamanan Akun',
               subtitle: 'Pengaturan tambahan untuk akun pengguna',
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             _buildSwitchTile(
               title: 'Status Akun Aktif',
               subtitle: 'Akun dapat langsung login setelah didaftarkan',
@@ -449,7 +455,7 @@ class _AddUserPageState extends State<AddUserPage> {
               value: _wajibGantiPassword,
               onChanged: (val) => setState(() => _wajibGantiPassword = val),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             SizedBox(
               width: double.infinity,
@@ -457,24 +463,27 @@ class _AddUserPageState extends State<AddUserPage> {
                 onPressed: _isLoading ? null : _handleSubmit,
                 icon: _isLoading
                     ? const SizedBox(
-                        width: 18,
-                        height: 18,
+                        width: 16,
+                        height: 16,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           color: Colors.white,
                         ),
                       )
-                    : const Icon(Icons.person_add_rounded, size: 18),
-                label: Text(_isLoading ? 'Menyimpan...' : 'Daftarkan Pengguna'),
+                    : const Icon(Icons.person_add_rounded, size: 16),
+                label: Text(
+                  _isLoading ? 'Menyimpan...' : 'Daftarkan Pengguna',
+                  style: const TextStyle(fontSize: 13),
+                ),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppTheme.primaryBlue,
                   foregroundColor: Colors.white,
-                  minimumSize: const Size.fromHeight(48),
+                  minimumSize: const Size.fromHeight(46),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   textStyle: const TextStyle(
-                    fontSize: 14,
+                    fontSize: 13,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -499,23 +508,23 @@ class _AddUserPageState extends State<AddUserPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 24,
-          height: 24,
+          width: 22,
+          height: 22,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: AppTheme.lightBlue,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(7),
           ),
           child: Text(
             number,
             style: const TextStyle(
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: FontWeight.w800,
               color: AppTheme.primaryBlue,
             ),
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 8),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -523,7 +532,7 @@ class _AddUserPageState extends State<AddUserPage> {
               Text(
                 title,
                 style: const TextStyle(
-                  fontSize: 15,
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: AppTheme.textPrimary,
                 ),
@@ -551,7 +560,8 @@ class _AddUserPageState extends State<AddUserPage> {
   }) {
     return InputDecoration(
       labelText: isRequired ? '$label *' : label,
-      prefixIcon: Icon(icon, size: 20),
+      labelStyle: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+      prefixIcon: Icon(icon, size: 18),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -561,7 +571,7 @@ class _AddUserPageState extends State<AddUserPage> {
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 1.5),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
     );
   }
 
@@ -578,12 +588,13 @@ class _AddUserPageState extends State<AddUserPage> {
       controller: controller,
       keyboardType: keyboardType,
       validator: validator,
+      style: const TextStyle(fontSize: 13),
       decoration: InputDecoration(
         labelText: isRequired ? '$label *' : label,
-        labelStyle: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
+        labelStyle: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
         hintText: hint,
-        hintStyle: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
-        prefixIcon: Icon(icon, size: 20),
+        hintStyle: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+        prefixIcon: Icon(icon, size: 18),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -594,8 +605,8 @@ class _AddUserPageState extends State<AddUserPage> {
           borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 1.5),
         ),
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 16,
+          horizontal: 12,
+          vertical: 14,
         ),
       ),
     );
@@ -640,7 +651,7 @@ class _AddUserPageState extends State<AddUserPage> {
       onTap: () => _onCategoryChanged(category),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
           color: isSelected ? AppTheme.primaryBlue : Colors.transparent,
           borderRadius: BorderRadius.circular(9),
@@ -659,14 +670,14 @@ class _AddUserPageState extends State<AddUserPage> {
           children: [
             Icon(
               icon,
-              size: 18,
+              size: 16,
               color: isSelected ? Colors.white : AppTheme.textSecondary,
             ),
             const SizedBox(width: 6),
             Text(
               label,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color: isSelected ? Colors.white : AppTheme.textSecondary,
               ),
@@ -679,7 +690,7 @@ class _AddUserPageState extends State<AddUserPage> {
 
   Widget _buildMemberRoleNotice() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
         color: AppTheme.background,
         borderRadius: BorderRadius.circular(12),
@@ -690,14 +701,14 @@ class _AddUserPageState extends State<AddUserPage> {
           Icon(
             Icons.check_circle_outline_rounded,
             color: AppTheme.primaryBlue,
-            size: 20,
+            size: 18,
           ),
-          SizedBox(width: 10),
+          SizedBox(width: 8),
           Expanded(
             child: Text(
               'Role Akun: Anggota Biasa (Member)',
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: AppTheme.textPrimary,
               ),
@@ -716,7 +727,7 @@ class _AddUserPageState extends State<AddUserPage> {
   }) {
     return Container(
       margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
       decoration: BoxDecoration(
         color: AppTheme.background,
         borderRadius: BorderRadius.circular(12),
@@ -727,7 +738,7 @@ class _AddUserPageState extends State<AddUserPage> {
         title: Text(
           title,
           style: const TextStyle(
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: FontWeight.w600,
             color: AppTheme.textPrimary,
           ),
@@ -759,24 +770,24 @@ class _AddUserPageState extends State<AddUserPage> {
       stream: _userService.streamUsers(),
       builder: (context, snapshot) {
         final users = snapshot.data ?? [];
-        final isLoading = snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData;
+        final isLoading =
+            snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildRecentRegisteredUsersHeader(count: users.length),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             if (isLoading)
               const Padding(
-                padding: EdgeInsets.all(24),
-                child: Center(
-                  child: CircularProgressIndicator(),
-                ),
+                padding: EdgeInsets.all(20),
+                child: Center(child: CircularProgressIndicator()),
               )
             else if (snapshot.hasError)
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: AppTheme.warningBg,
                   borderRadius: BorderRadius.circular(12),
@@ -784,13 +795,17 @@ class _AddUserPageState extends State<AddUserPage> {
                 ),
                 child: Text(
                   'Gagal memuat pengguna dari database: ${snapshot.error.toString().replaceAll('Exception: ', '')}',
-                  style: const TextStyle(color: AppTheme.warning, fontSize: 12),
+                  style: const TextStyle(
+                    color: AppTheme.warning,
+                    fontSize: 11,
+                    height: 1.4,
+                  ),
                 ),
               )
             else if (users.isEmpty)
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(20),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: AppTheme.surface,
@@ -799,7 +814,7 @@ class _AddUserPageState extends State<AddUserPage> {
                 ),
                 child: const Text(
                   'Belum ada pengguna terdaftar di database.',
-                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                 ),
               )
             else
@@ -817,21 +832,21 @@ class _AddUserPageState extends State<AddUserPage> {
         const Text(
           'Pengguna Baru Terdaftar',
           style: TextStyle(
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: FontWeight.w700,
             color: AppTheme.textPrimary,
           ),
         ),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
           decoration: BoxDecoration(
             color: AppTheme.lightBlue,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
           ),
           child: Text(
             '$count Pengguna',
             style: const TextStyle(
-              fontSize: 11,
+              fontSize: 10,
               fontWeight: FontWeight.w700,
               color: AppTheme.primaryBlue,
             ),
@@ -846,12 +861,12 @@ class _AddUserPageState extends State<AddUserPage> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: users.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         final user = users[index];
         final isActive = user.isActive;
         return Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: AppTheme.surface,
             borderRadius: BorderRadius.circular(14),
@@ -861,18 +876,18 @@ class _AddUserPageState extends State<AddUserPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CircleAvatar(
-                radius: 20,
+                radius: 18,
                 backgroundColor: AppTheme.lightBlue,
                 child: Text(
                   user.nama.isNotEmpty ? user.nama[0].toUpperCase() : 'U',
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
                     color: AppTheme.primaryBlue,
-                    fontSize: 16,
+                    fontSize: 14,
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -886,7 +901,7 @@ class _AddUserPageState extends State<AddUserPage> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontSize: 14,
+                              fontSize: 13,
                               fontWeight: FontWeight.w700,
                               color: AppTheme.textPrimary,
                             ),
@@ -896,22 +911,22 @@ class _AddUserPageState extends State<AddUserPage> {
                         RoleBadge(role: user.role),
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       user.email,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: 11,
                         color: AppTheme.textSecondary,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Row(
                       children: [
                         const Icon(
                           Icons.workspaces_outline,
-                          size: 13,
+                          size: 12,
                           color: AppTheme.textMuted,
                         ),
                         const SizedBox(width: 4),
@@ -921,7 +936,7 @@ class _AddUserPageState extends State<AddUserPage> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontSize: 11,
+                              fontSize: 10,
                               color: AppTheme.textMuted,
                               fontWeight: FontWeight.w500,
                             ),
@@ -930,8 +945,8 @@ class _AddUserPageState extends State<AddUserPage> {
                         const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
+                            horizontal: 7,
+                            vertical: 2,
                           ),
                           decoration: BoxDecoration(
                             color: isActive
@@ -942,7 +957,7 @@ class _AddUserPageState extends State<AddUserPage> {
                           child: Text(
                             isActive ? 'Aktif' : 'Nonaktif',
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 9,
                               fontWeight: FontWeight.w700,
                               color: isActive
                                   ? AppTheme.success
