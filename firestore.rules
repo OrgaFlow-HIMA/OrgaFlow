@@ -1,0 +1,125 @@
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isActive() {
+      return isSignedIn()
+        && userDoc().data.status_akun == 'aktif';
+    }
+
+    function role() {
+      return userDoc().data.role;
+    }
+
+    // User Profiles
+    match /users/{userId} {
+  // Semua user terautentikasi dapat membaca profil
+  allow read: if isSignedIn();
+
+  // Hanya sekretaris aktif yang boleh membuat user baru
+  allow create: if isActive()
+    && role() == 'sekretaris';
+
+  // User dapat mengubah profil sendiri.
+  // Sekretaris dan ketua dapat mengubah profil pengguna lain.
+  allow update: if isActive()
+    && (
+      request.auth.uid == userId
+      || role() == 'sekretaris'
+      || role() == 'ketua'
+    );
+
+  allow delete: if false;
+}
+
+    // Divisions
+    match /divisi/{divisionId} {
+      allow read: if isActive();
+      allow write: if false;
+    }
+
+    // Tasks
+    match /tasks/{taskId} {
+      allow read: if isActive();
+
+      // Sekretaris membuat tugas
+      allow create: if isActive()
+        && role() == 'sekretaris'
+        && request.resource.data.created_by == request.auth.uid
+        && request.resource.data.status == 'todo'
+        && request.resource.data.target_role is string;
+
+      // Sekretaris dapat mengubah tugas
+      allow update: if isActive()
+        && role() == 'sekretaris';
+
+      // Penerima dapat menandai tugas selesai
+      allow update: if isActive()
+        && role() == resource.data.target_role
+        && request.resource.data.status == 'done'
+        && request.resource.data.completed_by == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status', 'completed_by', 'completed_at']);
+
+      // Hanya sekretaris yang dapat menghapus tugas
+      allow delete: if isActive()
+        && role() == 'sekretaris';
+    }
+
+    // Agendas
+    match /agenda/{agendaId} {
+      // Semua user aktif dapat melihat agenda
+      allow read: if isActive();
+
+      // Hanya sekretaris aktif yang dapat membuat agenda
+      allow create: if isActive()
+        && role() == 'sekretaris'
+        && request.resource.data.created_by == request.auth.uid;
+
+      // Hanya sekretaris aktif yang dapat memperbarui agenda
+      allow update: if isActive()
+        && role() == 'sekretaris';
+
+      // Hanya sekretaris aktif yang dapat menghapus agenda
+      allow delete: if isActive()
+        && role() == 'sekretaris';
+    }
+
+    // Finance Transactions
+    match /finance_transactions/{txId} {
+      // Semua user aktif dapat membaca transaksi kas / tagihan
+      allow read: if isActive();
+
+      // Hanya bendahara yang dapat membuat dan menghapus transaksi
+      allow create: if isActive() && role() == 'bendahara';
+      allow delete: if isActive() && role() == 'bendahara';
+
+      // Bendahara dapat update seluruh transaksi; Ketua/Wakil dapat update status_konfirmasi
+      allow update: if isActive() && (
+        role() == 'bendahara' ||
+        role() == 'ketua' ||
+        role() == 'wakil_ketua'
+      );
+
+      // Sub-koleksi pembayaran anggota
+      match /payments/{userId} {
+        allow read: if isActive();
+
+        // Anggota bisa set/update payment miliknya sendiri, atau bendahara bisa update status verifikasi
+        allow create, update: if isActive() && (
+          request.auth.uid == userId ||
+          role() == 'bendahara'
+        );
+      }
+    }
+  }
+}

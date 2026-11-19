@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "917068683588",
+    "project_id": "orgaflow-app",
+    "storage_bucket": "orgaflow-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:917068683588:android:c2a336732a1596c17ddf11",
+        "android_client_info": {
+          "package_name": "com.example.flutter_orgaflow"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyARtumBT8ckEDLx9X2IYA8vfzHTrf_ofBo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
