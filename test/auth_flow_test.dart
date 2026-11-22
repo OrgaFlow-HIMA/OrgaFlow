@@ -27,6 +27,20 @@ class StubAuthService implements AuthService {
   }
 
   @override
+  Future<UserProfile> registerUser({
+    required String nama,
+    required String email,
+    required String password,
+    String? nim,
+    String? noWa,
+    required UserRole role,
+    String? divisiId,
+    String? suratTugasUrl,
+  }) async {
+    throw const AuthServiceException('Simulasi error register');
+  }
+
+  @override
   Future<void> changePassword({required String newPassword}) async {
     changePasswordCalled = true;
     updatedPassword = newPassword;
@@ -78,7 +92,6 @@ void main() {
             nama: 'User ${item.$2}',
             email: '${item.$1.name}@hima-ti.org',
             role: item.$1,
-            wajibGantiPassword: false,
             statusAkun: 'aktif',
           );
 
@@ -106,7 +119,6 @@ void main() {
           nama: 'Ahmad Mahasiswa',
           email: 'ahmad@hima-ti.org',
           role: UserRole.anggota,
-          wajibGantiPassword: false,
           statusAkun: 'aktif',
         );
 
@@ -134,7 +146,6 @@ void main() {
           nama: 'User Baru',
           email: 'baru@hima-ti.org',
           role: UserRole.anggota,
-          wajibGantiPassword: true,
           statusAkun: 'aktif',
         );
 
@@ -148,11 +159,11 @@ void main() {
           ),
         );
 
-        expect(find.text('Ganti Password Wajib'), findsOneWidget);
-        expect(find.text('Simpan Password & Masuk'), findsOneWidget);
+        expect(find.text('Ubah Kata Sandi'), findsOneWidget);
+        expect(find.text('Simpan Kata Sandi'), findsOneWidget);
 
         // Tekan simpan tanpa input
-        await tester.tap(find.text('Simpan Password & Masuk'));
+        await tester.tap(find.text('Simpan Kata Sandi'));
         await tester.pumpAndSettle();
 
         expect(find.text('Password baru wajib diisi.'), findsOneWidget);

@@ -18,9 +18,11 @@ class UserProfile {
   final UserRole role;
   final String? divisiId;
   final String? fotoUrl;
-  final bool wajibGantiPassword;
+  final String? suratTugasUrl;
+  final String? catatanPersetujuan;
   final String statusAkun;
   final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   const UserProfile({
     required this.uid,
@@ -31,13 +33,21 @@ class UserProfile {
     required this.role,
     this.divisiId,
     this.fotoUrl,
-    required this.wajibGantiPassword,
+    this.suratTugasUrl,
+    this.catatanPersetujuan,
     required this.statusAkun,
     this.createdAt,
+    this.updatedAt,
   });
 
   /// Status akun aktif
   bool get isActive => statusAkun.trim().toLowerCase() == 'aktif';
+
+  /// Status akun menunggu persetujuan sekretaris
+  bool get isPending => statusAkun.trim().toLowerCase() == 'menunggu_persetujuan';
+
+  /// Status akun ditolak
+  bool get isRejected => statusAkun.trim().toLowerCase() == 'ditolak';
 
   /// Menghitung periode dari 4 digit depan NIM (misal NIM 2024xxxx -> "Periode 2024 / 2025")
   String get periode {
@@ -78,6 +88,14 @@ class UserProfile {
       parsedCreatedAt = rawCreatedAt;
     }
 
+    DateTime? parsedUpdatedAt;
+    final rawUpdatedAt = data['updated_at'];
+    if (rawUpdatedAt is Timestamp) {
+      parsedUpdatedAt = rawUpdatedAt.toDate();
+    } else if (rawUpdatedAt is DateTime) {
+      parsedUpdatedAt = rawUpdatedAt;
+    }
+
     return UserProfile(
       uid: (data['uid'] as String?)?.trim().isNotEmpty == true
           ? (data['uid'] as String).trim()
@@ -89,9 +107,11 @@ class UserProfile {
       role: parsedRole,
       divisiId: (data['divisi_id'] as String?)?.trim(),
       fotoUrl: (data['foto_url'] as String?)?.trim(),
-      wajibGantiPassword: data['wajib_ganti_password'] as bool? ?? false,
+      suratTugasUrl: (data['surat_tugas_url'] as String?)?.trim(),
+      catatanPersetujuan: (data['catatan_persetujuan'] as String?)?.trim(),
       statusAkun: (data['status_akun'] as String?)?.trim() ?? 'nonaktif',
       createdAt: parsedCreatedAt,
+      updatedAt: parsedUpdatedAt,
     );
   }
 
@@ -106,9 +126,11 @@ class UserProfile {
       'role': role.firestoreValue,
       'divisi_id': divisiId,
       'foto_url': fotoUrl,
-      'wajib_ganti_password': wajibGantiPassword,
+      if (suratTugasUrl != null) 'surat_tugas_url': suratTugasUrl,
+      if (catatanPersetujuan != null) 'catatan_persetujuan': catatanPersetujuan,
       'status_akun': statusAkun,
       if (createdAt != null) 'created_at': Timestamp.fromDate(createdAt!),
+      if (updatedAt != null) 'updated_at': Timestamp.fromDate(updatedAt!),
     };
   }
 
@@ -121,9 +143,11 @@ class UserProfile {
     UserRole? role,
     String? divisiId,
     String? fotoUrl,
-    bool? wajibGantiPassword,
+    String? suratTugasUrl,
+    String? catatanPersetujuan,
     String? statusAkun,
     DateTime? createdAt,
+    DateTime? updatedAt,
   }) {
     return UserProfile(
       uid: uid ?? this.uid,
@@ -134,9 +158,11 @@ class UserProfile {
       role: role ?? this.role,
       divisiId: divisiId ?? this.divisiId,
       fotoUrl: fotoUrl ?? this.fotoUrl,
-      wajibGantiPassword: wajibGantiPassword ?? this.wajibGantiPassword,
+      suratTugasUrl: suratTugasUrl ?? this.suratTugasUrl,
+      catatanPersetujuan: catatanPersetujuan ?? this.catatanPersetujuan,
       statusAkun: statusAkun ?? this.statusAkun,
       createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 }

@@ -692,7 +692,6 @@ class ProfilePage extends StatelessWidget {
                   builder: (context) => ChangePasswordScreen(
                     profile: profile,
                     authService: authService,
-                    isMandatory: false,
                     onSuccess: () => Navigator.of(context).pop(),
                   ),
                 ),

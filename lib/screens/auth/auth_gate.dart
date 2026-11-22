@@ -7,8 +7,8 @@ import '../../models/user_profile.dart';
 import '../../services/auth_service.dart';
 import '../../services/user_service.dart';
 import '../dashboard/dashboard_page.dart';
-import 'change_password_screen.dart';
 import 'login_screen.dart';
+import 'register_screen.dart';
 import 'welcome_screen.dart';
 
 class AuthGate extends StatefulWidget {
@@ -28,6 +28,9 @@ class _AuthGateState extends State<AuthGate> {
   UserProfile? _cachedProfile;
   bool _isLoadingProfile = false;
   bool _showWelcome = true;
+  bool _showRegister = false;
+  bool _isJustRegistered = false;
+  bool _ignoreAuthChanges = false; // FLAG UNTUK MENCEGAH GLITCH SAAT REGISTER
   String? _sessionErrorMessage;
 
   @override
@@ -70,13 +73,21 @@ class _AuthGateState extends State<AuthGate> {
       }
 
       if (!profile.isActive) {
-        debugPrint('[OrgaFlow AuthGate] Akun nonaktif: ${profile.statusAkun}');
+        debugPrint(
+          '[OrgaFlow AuthGate] Akun nonaktif/pending: ${profile.statusAkun}',
+        );
+        final isPending = profile.isPending;
+        final errorMsg = isPending
+            ? 'Akun Anda (${profile.email}) sedang menunggu persetujuan dari Sekretaris. Anda akan dapat masuk setelah akun diverifikasi.'
+            : profile.isRejected
+            ? 'Pendaftaran akun Anda ditolak oleh Sekretaris${profile.catatanPersetujuan != null ? ': ${profile.catatanPersetujuan}' : '.'}'
+            : 'Akun Anda sedang tidak aktif (${profile.statusAkun}). Silakan hubungi pengurus.';
         await _authService.signOut();
         if (mounted) {
           setState(() {
             _cachedProfile = null;
-            _sessionErrorMessage =
-                'Akun Anda sedang tidak aktif (${profile.statusAkun}). Silakan hubungi pengurus.';
+            _isJustRegistered = false;
+            _sessionErrorMessage = errorMsg;
           });
         }
         return;
@@ -88,7 +99,8 @@ class _AuthGateState extends State<AuthGate> {
       if (mounted) {
         setState(() {
           _cachedProfile = profile;
-          _showWelcome = false; // Pengguna sudah pernah masuk, jika logout arahkan ke LoginScreen
+          _isJustRegistered = false;
+          _showWelcome = false;
         });
       }
     } on InvalidRoleException catch (e) {
@@ -125,88 +137,140 @@ class _AuthGateState extends State<AuthGate> {
     return StreamBuilder<User?>(
       stream: _authService.authStateChanges,
       builder: (context, snapshot) {
-        // Menunggu koneksi stream awal
+        // Jika sedang mendaftar dan user tiba-tiba login (karena proses register),
+        // abaikan perubahan auth agar SnackBar sukses bisa tampil tanpa glitch.
+        if (_ignoreAuthChanges && _showRegister) {
+          return RegisterScreen(
+            key: const ValueKey('register_screen_ignored'),
+            authService: _authService,
+            onBackToLogin: () {
+              setState(() {
+                _showRegister = false;
+                _ignoreAuthChanges = false;
+              });
+            },
+            onRegisterSuccess: () {}, // Do nothing
+          );
+        }
+
         if (snapshot.connectionState == ConnectionState.waiting &&
-            _cachedProfile == null) {
+            _cachedProfile == null &&
+            _showWelcome) {
           return _buildLoadingScreen();
         }
 
         final user = snapshot.data;
 
-        // Pengguna belum login
         if (user == null) {
           _cachedProfile = null;
 
           if (_showWelcome) {
             return WelcomeScreen(
-              onContinue: () {
-                setState(() => _showWelcome = false);
+              key: const ValueKey('welcome_screen'),
+              onContinue: () => setState(() => _showWelcome = false),
+            );
+          }
+
+          if (_showRegister) {
+            return RegisterScreen(
+              key: const ValueKey('register_screen'),
+              authService: _authService,
+              onBackToLogin: () {
+                setState(() {
+                  _showRegister = false;
+                  _ignoreAuthChanges = false;
+                });
+              },
+              onRegisterSuccess: () {
+                // Set flag agar AuthGate mengabaikan perubahan auth sementara
+                setState(() => _ignoreAuthChanges = true);
               },
             );
           }
 
           return LoginScreen(
+            key: const ValueKey('login_screen'),
             authService: _authService,
             initialErrorMessage: _sessionErrorMessage,
             onBack: () {
               setState(() {
                 _showWelcome = true;
                 _sessionErrorMessage = null;
+                _isJustRegistered = false;
+              });
+            },
+            onNavigateToRegister: () {
+              setState(() {
+                _showRegister = true;
+                _sessionErrorMessage = null;
+                _isJustRegistered = false;
               });
             },
             onLoginSuccess: (profile) {
               setState(() {
                 _cachedProfile = profile;
                 _sessionErrorMessage = null;
+                _isJustRegistered = false;
               });
             },
           );
         }
 
-        // Pengguna login, tetapi profil belum dimuat atau berbeda sesi
+        // Pengguna login (dari proses register atau login biasa), tapi profil belum dimuat
         if (_cachedProfile == null || _cachedProfile!.uid != user.uid) {
           if (!_isLoadingProfile) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               _loadProfileForUser(user);
             });
           }
-          return _buildLoadingScreen();
+
+          // Jika baru selesai register, jangan tampilkan loading screen
+          if (_isJustRegistered) {
+            return LoginScreen(
+              key: const ValueKey('login_screen_after_register'),
+              authService: _authService,
+              initialErrorMessage: _sessionErrorMessage,
+              onBack: () {
+                setState(() {
+                  _showWelcome = true;
+                  _sessionErrorMessage = null;
+                  _isJustRegistered = false;
+                });
+              },
+              onNavigateToRegister: () {
+                setState(() {
+                  _showRegister = true;
+                  _sessionErrorMessage = null;
+                  _isJustRegistered = false;
+                });
+              },
+              onLoginSuccess: (profile) {
+                setState(() {
+                  _cachedProfile = profile;
+                  _sessionErrorMessage = null;
+                  _isJustRegistered = false;
+                });
+              },
+            );
+          }
+
+          return _buildLoadingScreen(key: const ValueKey('loading_screen'));
         }
 
         final profile = _cachedProfile!;
 
-        // Skenario 1: Wajib Ganti Password pada login pertama
-        if (profile.wajibGantiPassword) {
-          return ChangePasswordScreen(
-            profile: profile,
-            authService: _authService,
-            onSuccess: () {
-              // Muat ulang profil dari database untuk memastikan wajib_ganti_password sudah false
-              _loadProfileForUser(user);
-            },
-          );
-        }
-
-        // Skenario 2: Tampilkan Dashboard terpadu untuk seluruh role
-        return DashboardPage(profile: profile, authService: _authService);
-
-        // // Fallback keamanan jika role di luar ketentuan
-        // return LoginScreen(
-        //   authService: _authService,
-        //   initialErrorMessage: _sessionErrorMessage,
-        //   onBack: () {
-        //     setState(() {
-        //       _showWelcome = true;
-        //       _sessionErrorMessage = null;
-        //     });
-        //   },
-        // );
+        return DashboardPage(
+          key: const ValueKey('dashboard_page'),
+          profile: profile,
+          authService: _authService,
+        );
       },
     );
   }
 
-  Widget _buildLoadingScreen() {
+  Widget _buildLoadingScreen({Key? key}) {
     return Scaffold(
+      key: key,
       backgroundColor: AppTheme.background,
       body: Center(
         child: Column(

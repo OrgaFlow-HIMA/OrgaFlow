@@ -1,4 +1,5 @@
 import 'dart:math';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -88,7 +89,6 @@ class UserService {
     required UserRole role,
     required String divisiId,
     required bool statusAktif,
-    required bool wajibGantiPassword,
   }) async {
     final cleanEmail = email.trim().toLowerCase();
     final cleanNama = nama.trim();
@@ -119,10 +119,11 @@ class UserService {
         if (authErr is FirebaseAuthException) {
           rethrow;
         }
-        final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-          email: cleanEmail,
-          password: temporaryPassword,
-        );
+        final credential = await FirebaseAuth.instance
+            .createUserWithEmailAndPassword(
+              email: cleanEmail,
+              password: temporaryPassword,
+            );
         uid = credential.user!.uid;
       }
 
@@ -133,8 +134,9 @@ class UserService {
         nim: cleanNim?.isEmpty == true ? null : cleanNim,
         role: role,
         divisiId: divisiId.trim(),
-        wajibGantiPassword: wajibGantiPassword,
-        statusAkun: statusAktif ? AppConstants.statusActive : AppConstants.statusInactive,
+        statusAkun: statusAktif
+            ? AppConstants.statusActive
+            : AppConstants.statusInactive,
         createdAt: DateTime.now(),
       );
 
@@ -148,9 +150,13 @@ class UserService {
     } on FirebaseAuthException catch (e) {
       throw Exception(_authErrorMessage(e));
     } on FirebaseException catch (e) {
-      throw Exception('Gagal menyimpan akun ke database (Firestore permission error): ${e.message ?? e.code}');
+      throw Exception(
+        'Gagal menyimpan akun ke database (Firestore permission error): ${e.message ?? e.code}',
+      );
     } catch (e) {
-      throw Exception('Gagal mendaftarkan pengguna: ${e.toString().replaceAll('Exception: ', '')}');
+      throw Exception(
+        'Gagal mendaftarkan pengguna: ${e.toString().replaceAll('Exception: ', '')}',
+      );
     } finally {
       if (secondaryApp != null) {
         await secondaryApp.delete();
@@ -160,18 +166,22 @@ class UserService {
 
   /// Aliran real-time daftar seluruh pengguna dari Firestore
   Stream<List<UserProfile>> streamUsers() {
-    return _firestore
-        .collection(AppConstants.usersCollection)
-        .snapshots()
-        .map((snapshot) {
-      final users = snapshot.docs.map((doc) {
-        try {
-          return UserProfile.fromMap(doc.data(), doc.id);
-        } catch (e) {
-          debugPrint('[OrgaFlow UserService ERROR] Gagal parse user ${doc.id}: $e');
-          return null;
-        }
-      }).whereType<UserProfile>().toList();
+    return _firestore.collection(AppConstants.usersCollection).snapshots().map((
+      snapshot,
+    ) {
+      final users = snapshot.docs
+          .map((doc) {
+            try {
+              return UserProfile.fromMap(doc.data(), doc.id);
+            } catch (e) {
+              debugPrint(
+                '[OrgaFlow UserService ERROR] Gagal parse user ${doc.id}: $e',
+              );
+              return null;
+            }
+          })
+          .whereType<UserProfile>()
+          .toList();
 
       users.sort((a, b) {
         if (a.createdAt == null && b.createdAt == null) return 0;
@@ -184,9 +194,76 @@ class UserService {
     });
   }
 
+  /// Aliran real-time pendaftar yang berstatus 'menunggu_persetujuan' (untuk Sekretaris)
+  Stream<List<UserProfile>> streamPendingRegistrations() {
+    return _firestore
+        .collection(AppConstants.usersCollection)
+        .where('status_akun', isEqualTo: AppConstants.statusPending)
+        .snapshots()
+        .map((snapshot) {
+          final users = snapshot.docs
+              .map((doc) {
+                try {
+                  return UserProfile.fromMap(doc.data(), doc.id);
+                } catch (e) {
+                  debugPrint(
+                    '[OrgaFlow UserService ERROR] Gagal parse user pending ${doc.id}: $e',
+                  );
+                  return null;
+                }
+              })
+              .whereType<UserProfile>()
+              .toList();
+
+          users.sort((a, b) {
+            if (a.createdAt == null && b.createdAt == null) return 0;
+            if (a.createdAt == null) return 1;
+            if (b.createdAt == null) return -1;
+            return b.createdAt!.compareTo(a.createdAt!);
+          });
+
+          return users;
+        });
+  }
+
+  /// Menyetujui pendaftaran akun oleh Sekretaris (status menjadi 'aktif')
+  Future<void> approveRegistration(String uid, {String? catatan}) async {
+    try {
+      await _firestore.collection(AppConstants.usersCollection).doc(uid).update(
+        {
+          'status_akun': AppConstants.statusActive,
+          'catatan_persetujuan': catatan ?? 'Disetujui oleh Sekretaris',
+          'updated_at': Timestamp.fromDate(DateTime.now()),
+        },
+      );
+    } on FirebaseException catch (e) {
+      throw Exception('Gagal menyetujui akun: ${e.message ?? e.code}');
+    } catch (e) {
+      throw Exception('Terjadi kesalahan saat menyetujui akun: $e');
+    }
+  }
+
+  /// Menolak pendaftaran akun oleh Sekretaris (status menjadi 'ditolak')
+  Future<void> rejectRegistration(String uid, {required String alasan}) async {
+    try {
+      await _firestore.collection(AppConstants.usersCollection).doc(uid).update(
+        {
+          'status_akun': AppConstants.statusRejected,
+          'catatan_persetujuan': alasan,
+          'updated_at': Timestamp.fromDate(DateTime.now()),
+        },
+      );
+    } on FirebaseException catch (e) {
+      throw Exception('Gagal menolak akun: ${e.message ?? e.code}');
+    } catch (e) {
+      throw Exception('Terjadi kesalahan saat menolak akun: $e');
+    }
+  }
+
   String _temporaryPassword() {
     final random = Random.secure();
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#';
+    const chars =
+        'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#';
     return List.generate(14, (_) => chars[random.nextInt(chars.length)]).join();
   }
 
@@ -202,24 +279,6 @@ class UserService {
         return 'Password acak tidak memenuhi standar keamanan Firebase.';
       default:
         return 'Gagal membuat akun Auth: ${e.message ?? e.code}';
-    }
-  }
-
-  /// Memperbarui status kewajiban ganti password pengguna di Firestore
-  Future<void> updatePasswordStatus(
-    String uid, {
-    required bool wajibGantiPassword,
-  }) async {
-    try {
-      await _firestore.collection(AppConstants.usersCollection).doc(uid).update(
-        {'wajib_ganti_password': wajibGantiPassword},
-      );
-    } on FirebaseException catch (e) {
-      throw Exception(
-        'Gagal memperbarui status password di database: ${e.message ?? e.code}',
-      );
-    } catch (e) {
-      throw Exception('Terjadi kesalahan saat memperbarui status password: $e');
     }
   }
 }

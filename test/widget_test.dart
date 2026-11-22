@@ -26,6 +26,20 @@ class FakeAuthService implements AuthService {
   }
 
   @override
+  Future<UserProfile> registerUser({
+    required String nama,
+    required String email,
+    required String password,
+    String? nim,
+    String? noWa,
+    required UserRole role,
+    String? divisiId,
+    String? suratTugasUrl,
+  }) async {
+    throw const AuthServiceException('Simulasi error register.');
+  }
+
+  @override
   Future<void> changePassword({required String newPassword}) async {}
 
   @override
@@ -84,7 +98,6 @@ void main() {
         email: 'fakhri@hima-ti.org',
         nim: '22001122',
         role: UserRole.ketua,
-        wajibGantiPassword: false,
         statusAkun: 'aktif',
       );
 
@@ -116,7 +129,6 @@ void main() {
         email: 'psdm@hima-ti.org',
         role: UserRole.kepalaDivisi,
         divisiId: 'psdm',
-        wajibGantiPassword: false,
         statusAkun: 'aktif',
       );
 
@@ -150,7 +162,6 @@ void main() {
         nama: 'Fakhri Herlambang',
         email: 'fakhri@hima-ti.org',
         role: UserRole.ketua,
-        wajibGantiPassword: false,
         statusAkun: 'aktif',
       );
 
@@ -202,7 +213,6 @@ void main() {
             email: 'pengurus@hima-ti.org',
             role: entry.key,
             divisiId: entry.key == UserRole.kepalaDivisi ? 'psdm' : null,
-            wajibGantiPassword: false,
             statusAkun: 'aktif',
           );
 
@@ -243,7 +253,6 @@ void main() {
           nim: '22003344',
           role: UserRole.anggota,
           divisiId: 'divisi_media_dan_informasi',
-          wajibGantiPassword: false,
           statusAkun: 'aktif',
         );
 

@@ -48,18 +48,23 @@ service cloud.firestore {
       // Semua pengguna terautentikasi dapat membaca profil
       allow read: if isSignedIn();
 
-      // Hanya Sekretaris aktif yang dapat membuat pengguna
-      allow create: if isRole(['sekretaris']);
+      // Calon pengguna baru dapat mendaftar profil mandiri (status wajib 'menunggu_persetujuan')
+      // Atau Sekretaris aktif dapat membuat profil pengguna
+      allow create: if isSignedIn() && (
+        (request.auth.uid == userId && request.resource.data.status_akun == 'menunggu_persetujuan') ||
+        isRole(['sekretaris'])
+      );
 
-      // Pengguna dapat memperbarui profil sendiri.
-      // Sekretaris dan Ketua dapat memperbarui profil pengguna lain.
-      allow update: if isActive() && (
-        request.auth.uid == userId ||
+      // Pengguna dapat memperbarui profil sendiri (kecuali status_akun dan role).
+      // Sekretaris dan Ketua dapat memperbarui profil pengguna lain (termasuk verifikasi/ACC akun).
+      allow update: if isSignedIn() && (
+        (request.auth.uid == userId &&
+         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status_akun', 'role'])) ||
         isRole(['sekretaris', 'ketua'])
       );
 
-      // Penghapusan profil tidak diperbolehkan
-      allow delete: if false;
+      // Hanya sekretaris yang dapat menghapus jika pendaftaran ditolak
+      allow delete: if isRole(['sekretaris']);
     }
 
     // =====================================================

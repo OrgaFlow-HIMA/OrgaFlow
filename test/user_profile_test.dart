@@ -13,7 +13,6 @@ void main() {
         'role': 'ketua',
         'divisi_id': 'divisi-inti',
         'foto_url': 'https://example.com/foto.jpg',
-        'wajib_ganti_password': false,
         'status_akun': 'aktif',
       };
 
@@ -26,7 +25,6 @@ void main() {
       expect(profile.role, UserRole.ketua);
       expect(profile.role.isPengurus, isTrue);
       expect(profile.divisiId, 'divisi-inti');
-      expect(profile.wajibGantiPassword, isFalse);
       expect(profile.statusAkun, 'aktif');
       expect(profile.isActive, isTrue);
     });
@@ -51,7 +49,6 @@ void main() {
         'nama': 'Budi Santoso',
         'email': 'budi@example.com',
         'role': 'anggota',
-        'wajib_ganti_password': true,
         'status_akun': 'aktif',
       };
 
@@ -63,7 +60,6 @@ void main() {
       expect(profile.fotoUrl, isNull);
       expect(profile.role, UserRole.anggota);
       expect(profile.role.isAnggota, isTrue);
-      expect(profile.wajibGantiPassword, isTrue);
       expect(profile.isActive, isTrue);
     });
 

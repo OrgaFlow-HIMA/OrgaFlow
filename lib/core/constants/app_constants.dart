@@ -16,4 +16,6 @@ class AppConstants {
   // Account Statuses
   static const String statusActive = 'aktif';
   static const String statusInactive = 'nonaktif';
+  static const String statusPending = 'menunggu_persetujuan';
+  static const String statusRejected = 'ditolak';
 }

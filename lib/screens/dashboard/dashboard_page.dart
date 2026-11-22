@@ -11,7 +11,7 @@ import '../approval/dekan_approval_page.dart';
 import '../finance/finance_page.dart';
 import '../profile/profile_page.dart';
 import '../tasks/tasks_page.dart';
-import '../users/add_user_screen.dart';
+import '../users/user_approval_page.dart';
 import 'dashboard_home_view.dart';
 
 class DashboardNavItem {
@@ -182,7 +182,7 @@ class _DashboardPageState extends State<DashboardPage> {
           userName: widget.profile.nama,
         );
       case 'Pengguna':
-        return const AddUserPage();
+        return const UserApprovalPage();
       default:
         return Center(
           child: Text(
