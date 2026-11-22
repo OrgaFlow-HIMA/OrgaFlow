@@ -8,6 +8,7 @@ class Agenda {
   final String tipe; // 'online' atau 'offline'
   final String lokasi;
   final String? linkMeeting;
+  final String? linkAbsensi;
   final DateTime tanggalWaktu;
   final DateTime? selesaiWaktu;
   final String createdBy;
@@ -22,6 +23,7 @@ class Agenda {
     required this.tipe,
     required this.lokasi,
     this.linkMeeting,
+    this.linkAbsensi,
     required this.tanggalWaktu,
     this.selesaiWaktu,
     required this.createdBy,
@@ -61,8 +63,18 @@ class Agenda {
 
   String get formattedDateTime {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
     ];
     final day = tanggalWaktu.day;
     final month = months[tanggalWaktu.month - 1];
@@ -88,6 +100,7 @@ class Agenda {
       tipe: (data['tipe'] as String?)?.trim() ?? 'offline',
       lokasi: (data['lokasi'] as String?)?.trim() ?? 'Tempat belum ditentukan',
       linkMeeting: (data['link_meeting'] as String?)?.trim(),
+      linkAbsensi: (data['link_absensi'] as String?)?.trim(),
       tanggalWaktu: _parseTimestamp(data['tanggal_waktu']) ?? DateTime.now(),
       selesaiWaktu: _parseTimestamp(data['selesai_waktu']),
       createdBy: (data['created_by'] as String?)?.trim() ?? '',
@@ -105,6 +118,8 @@ class Agenda {
       'lokasi': lokasi,
       if (linkMeeting != null && linkMeeting!.isNotEmpty)
         'link_meeting': linkMeeting,
+      if (linkAbsensi != null && linkAbsensi!.isNotEmpty)
+        'link_absensi': linkAbsensi,
       'tanggal_waktu': Timestamp.fromDate(tanggalWaktu),
       if (selesaiWaktu != null)
         'selesai_waktu': Timestamp.fromDate(selesaiWaktu!),
@@ -124,6 +139,7 @@ class Agenda {
     String? tipe,
     String? lokasi,
     String? linkMeeting,
+    String? linkAbsensi,
     DateTime? tanggalWaktu,
     DateTime? selesaiWaktu,
     String? createdBy,
@@ -138,6 +154,7 @@ class Agenda {
       tipe: tipe ?? this.tipe,
       lokasi: lokasi ?? this.lokasi,
       linkMeeting: linkMeeting ?? this.linkMeeting,
+      linkAbsensi: linkAbsensi ?? this.linkAbsensi,
       tanggalWaktu: tanggalWaktu ?? this.tanggalWaktu,
       selesaiWaktu: selesaiWaktu ?? this.selesaiWaktu,
       createdBy: createdBy ?? this.createdBy,

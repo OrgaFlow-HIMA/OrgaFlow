@@ -51,6 +51,7 @@ class _AddEditAgendaModalState extends State<AddEditAgendaModal> {
   late final TextEditingController _kategoriController;
   late final TextEditingController _lokasiController;
   late final TextEditingController _linkMeetingController;
+  late final TextEditingController _linkAbsensiController;
 
   late String _tipe;
   late DateTime _tanggalWaktu;
@@ -75,6 +76,7 @@ class _AddEditAgendaModalState extends State<AddEditAgendaModal> {
           (_tipe == 'online' ? 'Google Meet' : 'Ruang Rapat Gedung B'),
     );
     _linkMeetingController = TextEditingController(text: a?.linkMeeting ?? '');
+    _linkAbsensiController = TextEditingController(text: a?.linkAbsensi ?? '');
     _tanggalWaktu =
         a?.tanggalWaktu ?? DateTime.now().add(const Duration(days: 1));
     _selesaiWaktu = a?.selesaiWaktu;
@@ -87,6 +89,7 @@ class _AddEditAgendaModalState extends State<AddEditAgendaModal> {
     _kategoriController.dispose();
     _lokasiController.dispose();
     _linkMeetingController.dispose();
+    _linkAbsensiController.dispose();
     super.dispose();
   }
 
@@ -164,6 +167,7 @@ class _AddEditAgendaModalState extends State<AddEditAgendaModal> {
           tipe: _tipe,
           lokasi: _lokasiController.text,
           linkMeeting: _tipe == 'online' ? _linkMeetingController.text : null,
+          linkAbsensi: _tipe == 'online' ? _linkAbsensiController.text : null,
           tanggalWaktu: _tanggalWaktu,
           selesaiWaktu: _selesaiWaktu,
         );
@@ -176,6 +180,7 @@ class _AddEditAgendaModalState extends State<AddEditAgendaModal> {
           tipe: _tipe,
           lokasi: _lokasiController.text,
           linkMeeting: _tipe == 'online' ? _linkMeetingController.text : null,
+          linkAbsensi: _tipe == 'online' ? _linkAbsensiController.text : null,
           tanggalWaktu: _tanggalWaktu,
           selesaiWaktu: _selesaiWaktu,
         );
@@ -368,7 +373,7 @@ class _AddEditAgendaModalState extends State<AddEditAgendaModal> {
                   ),
                   const SizedBox(height: 14),
 
-                  // ===== Link Meeting (Online) — struktur tetap, hanya disembunyikan =====
+                  // ===== Link Meeting & Link Absensi (Online) =====
                   Offstage(
                     offstage: _tipe != 'online',
                     child: Column(
@@ -387,6 +392,23 @@ class _AddEditAgendaModalState extends State<AddEditAgendaModal> {
                           controller: _linkMeetingController,
                           decoration: _inputDecoration(
                             'https://meet.google.com/xyz-abcd-efg',
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // KOTAK BARU: Tautan Link Absensi (Google Form)
+                        const Text(
+                          'Tautan Link Absensi (Google Form)',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        TextFormField(
+                          controller: _linkAbsensiController,
+                          decoration: _inputDecoration(
+                            'https://forms.gle/xxxxxxxxxx (Opsional)',
                           ),
                         ),
                         const SizedBox(height: 14),
@@ -447,7 +469,7 @@ class _AddEditAgendaModalState extends State<AddEditAgendaModal> {
                   ),
                   const SizedBox(height: 24),
 
-                  // ===== Submit — Stack dengan 2 child tetap, tanpa `if` =====
+                  // ===== Submit =====
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(

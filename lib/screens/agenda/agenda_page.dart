@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../enums/user_role.dart';
@@ -11,11 +12,7 @@ class AgendaPage extends StatefulWidget {
   final String userName;
   final UserRole? role;
 
-  const AgendaPage({
-    super.key,
-    this.userName = 'Pengurus',
-    this.role,
-  });
+  const AgendaPage({super.key, this.userName = 'Pengurus', this.role});
 
   @override
   State<AgendaPage> createState() => _AgendaPageState();
@@ -176,7 +173,10 @@ class _AgendaPageState extends State<AgendaPage> {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    _buildFilterChip('Mendatang (${upcomingAgendas.length})', 0),
+                    _buildFilterChip(
+                      'Mendatang (${upcomingAgendas.length})',
+                      0,
+                    ),
                     const SizedBox(width: 8),
                     _buildFilterChip('Selesai (${pastAgendas.length})', 1),
                     const SizedBox(width: 8),
@@ -259,7 +259,10 @@ class _AgendaPageState extends State<AgendaPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: AppTheme.lightBlue,
                   borderRadius: BorderRadius.circular(20),
@@ -276,7 +279,10 @@ class _AgendaPageState extends State<AgendaPage> {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: isDanger ? AppTheme.errorBg : AppTheme.lightBlue,
                       borderRadius: BorderRadius.circular(20),
@@ -286,7 +292,9 @@ class _AgendaPageState extends State<AgendaPage> {
                         Icon(
                           Icons.fiber_manual_record,
                           size: 8,
-                          color: isDanger ? AppTheme.error : AppTheme.primaryBlue,
+                          color: isDanger
+                              ? AppTheme.error
+                              : AppTheme.primaryBlue,
                         ),
                         const SizedBox(width: 4),
                         Text(
@@ -294,7 +302,9 @@ class _AgendaPageState extends State<AgendaPage> {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: isDanger ? AppTheme.error : AppTheme.primaryBlue,
+                            color: isDanger
+                                ? AppTheme.error
+                                : AppTheme.primaryBlue,
                           ),
                         ),
                       ],
@@ -331,9 +341,16 @@ class _AgendaPageState extends State<AgendaPage> {
                           value: 'delete',
                           child: Row(
                             children: [
-                              Icon(Icons.delete_outline, size: 18, color: AppTheme.error),
+                              Icon(
+                                Icons.delete_outline,
+                                size: 18,
+                                color: AppTheme.error,
+                              ),
                               SizedBox(width: 8),
-                              Text('Hapus', style: TextStyle(color: AppTheme.error)),
+                              Text(
+                                'Hapus',
+                                style: TextStyle(color: AppTheme.error),
+                              ),
                             ],
                           ),
                         ),
@@ -438,6 +455,99 @@ class _AgendaPageState extends State<AgendaPage> {
               platform: agenda.lokasi,
             ),
           ],
+
+          // Komponen Tautan Absensi Google Form (khusus tipe online jika diisi)
+          if (isOnline &&
+              agenda.linkAbsensi != null &&
+              agenda.linkAbsensi!.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _buildAttendanceBox(agenda.linkAbsensi!),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAttendanceBox(String absensiUrl) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.lightBlue.withOpacity(0.35),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.primaryBlue.withOpacity(0.18)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: AppTheme.primaryBlue,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.assignment_turned_in_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Absensi Kehadiran',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  absensiUrl,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.primaryBlue,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          FilledButton.icon(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: absensiUrl));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Tautan absensi berhasil disalin!'),
+                  backgroundColor: AppTheme.success,
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
+            icon: const Icon(Icons.copy_rounded, size: 15),
+            label: const Text('Salin'),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.primaryBlue,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              textStyle: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
         ],
       ),
     );

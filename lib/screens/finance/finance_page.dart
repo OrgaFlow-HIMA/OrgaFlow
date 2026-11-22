@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../../enums/user_role.dart';
 import '../../models/finance_transaction.dart';
+import '../../services/finance_pdf_service.dart';
 import '../../services/finance_service.dart';
 import 'widgets/add_finance_modal.dart';
 import 'widgets/qris_payment_sheet.dart';
@@ -31,11 +32,20 @@ class _FinancePageState extends State<FinancePage>
   late final FinanceService _service;
   String _currentUid = '';
   String _currentNama = '';
+  bool _isGeneratingPdf = false;
 
   bool get _isBendahara => widget.userRole == UserRole.bendahara;
   bool get _isLeader =>
       widget.userRole == UserRole.ketua ||
       widget.userRole == UserRole.wakilKetua;
+
+  /// Role yang berhak mencetak laporan PDF keuangan:
+  /// Ketua, Wakil Ketua, Bendahara, dan Dekan (Dosen)
+  bool get _canExportPdf =>
+      widget.userRole == UserRole.ketua ||
+      widget.userRole == UserRole.wakilKetua ||
+      widget.userRole == UserRole.bendahara ||
+      widget.userRole == UserRole.dekan;
 
   @override
   void initState() {
@@ -44,7 +54,8 @@ class _FinancePageState extends State<FinancePage>
     _tabController = TabController(length: 2, vsync: this);
     final user = FirebaseAuth.instance.currentUser;
     _currentUid = user?.uid ?? 'anon';
-    _currentNama = widget.userName ?? user?.displayName ?? 'Anggota';
+    _currentNama =
+        widget.userName ?? user?.displayName ?? widget.userRole.label;
   }
 
   @override
@@ -55,6 +66,197 @@ class _FinancePageState extends State<FinancePage>
 
   String _formatRupiah(int number) {
     return 'Rp ${number.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
+  }
+
+  /// Menampilkan pilihan periode sebelum generate PDF
+  void _showExportPdfOptions(List<FinanceTransaction> allTransactions) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        final now = DateTime.now();
+        final thisMonthTx = allTransactions
+            .where(
+              (tx) =>
+                  tx.createdAt.month == now.month &&
+                  tx.createdAt.year == now.year,
+            )
+            .toList();
+        final verifiedTx = allTransactions
+            .where((tx) => tx.isDikonfirmasi)
+            .toList();
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'Cetak Laporan Keuangan (PDF)',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Pilih cakupan data buku kas yang ingin dicetak:',
+                  style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                ),
+                const SizedBox(height: 16),
+                _buildPdfOptionTile(
+                  icon: Icons.all_inbox_rounded,
+                  title: 'Semua Riwayat Buku Kas',
+                  subtitle:
+                      '${allTransactions.length} total transaksi tercatat',
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _runPdfExport(
+                      allTransactions,
+                      'Semua Riwayat Kepengurusan',
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
+                _buildPdfOptionTile(
+                  icon: Icons.calendar_month_rounded,
+                  title: 'Laporan Bulan Ini (${now.month}/${now.year})',
+                  subtitle: '${thisMonthTx.length} transaksi bulan berjalan',
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _runPdfExport(
+                      thisMonthTx,
+                      'Bulan ${now.month}/${now.year}',
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
+                _buildPdfOptionTile(
+                  icon: Icons.verified_rounded,
+                  title: 'Hanya Transaksi Terverifikasi (Sah)',
+                  subtitle:
+                      '${verifiedTx.length} transaksi sudah diaudit Ketua',
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _runPdfExport(
+                      verifiedTx,
+                      'Transaksi Terverifikasi (Audit Sah)',
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPdfOptionTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppTheme.background,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTheme.borderLight),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppTheme.lightBlue,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: AppTheme.primaryBlue, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: AppTheme.textSecondary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _runPdfExport(
+    List<FinanceTransaction> transactions,
+    String periodeLabel,
+  ) async {
+    if (_isGeneratingPdf) return;
+    setState(() => _isGeneratingPdf = true);
+
+    try {
+      await FinancePdfService.generateAndPreviewReport(
+        transactions: transactions,
+        dicetakOleh: _currentNama,
+        rolePencetak: widget.userRole.label,
+        periodeLabel: periodeLabel,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal membuat PDF: $e'),
+            backgroundColor: AppTheme.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isGeneratingPdf = false);
+      }
+    }
   }
 
   @override
@@ -95,7 +297,7 @@ class _FinancePageState extends State<FinancePage>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildHeaderGreeting(),
+                      _buildHeaderGreeting(allTransactions),
                       const SizedBox(height: 14),
                       _buildSummaryCard(saldoAktif, totalMasuk, totalKeluar),
                       const SizedBox(height: 14),
@@ -133,35 +335,70 @@ class _FinancePageState extends State<FinancePage>
     );
   }
 
-  Widget _buildHeaderGreeting() {
+  Widget _buildHeaderGreeting(List<FinanceTransaction> allTransactions) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Keuangan & Kas Organisasi',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: AppTheme.textPrimary,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Keuangan & Kas Organisasi',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.textPrimary,
+                ),
               ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              _isBendahara
-                  ? 'Kelola arus kas & tagihan anggota'
-                  : _isLeader
-                  ? 'Pantau & konfirmasi laporan kas'
-                  : 'Cek kewajiban kas & pembayaran Anda',
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppTheme.textSecondary,
+              const SizedBox(height: 2),
+              Text(
+                _isBendahara
+                    ? 'Kelola arus kas & tagihan anggota'
+                    : (_isLeader || widget.userRole == UserRole.dekan)
+                    ? 'Pantau & unduh laporan buku kas'
+                    : 'Cek kewajiban kas & pembayaran Anda',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppTheme.textSecondary,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
+        if (_canExportPdf) ...[
+          const SizedBox(width: 8),
+          FilledButton.icon(
+            onPressed: _isGeneratingPdf
+                ? null
+                : () => _showExportPdfOptions(allTransactions),
+            icon: _isGeneratingPdf
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.picture_as_pdf_rounded, size: 16),
+            label: const Text('PDF'),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.primaryBlue,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              textStyle: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -526,12 +763,90 @@ class _FinancePageState extends State<FinancePage>
       );
     }
 
+    final itemCount = _canExportPdf ? list.length + 1 : list.length;
+
     return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: list.length,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+      itemCount: itemCount,
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
-        final tx = list[index];
+        // Banner Unduh Laporan PDF di bagian paling atas Tab Buku Kas
+        if (_canExportPdf && index == 0) {
+          return Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppTheme.lightBlue.withValues(alpha: 0.45),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppTheme.primaryBlue.withValues(alpha: 0.2),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(9),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryBlue,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.picture_as_pdf_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Laporan Pertanggungjawaban PDF',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Unduh atau bagikan rekap resmi buku kas HIMA TI',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: _isGeneratingPdf
+                      ? null
+                      : () => _showExportPdfOptions(list),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppTheme.primaryBlue,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Unduh',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final tx = list[_canExportPdf ? index - 1 : index];
         final isIncome = tx.isIncome;
         final isConfirmed = tx.isDikonfirmasi;
 

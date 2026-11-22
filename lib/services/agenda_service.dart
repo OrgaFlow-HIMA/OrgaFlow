@@ -18,7 +18,7 @@ class AgendaService {
   AgendaService({FirebaseFirestore? firestore})
     : _firestore = firestore ?? FirebaseFirestore.instance;
 
-  CollectionReference<Map<String, dynamic>> get _agendas =>
+  CollectionReference get _agendas =>
       _firestore.collection(AppConstants.agendasCollection);
 
   /// Stream real-time seluruh agenda, diurutkan dari yang paling dekat
@@ -27,7 +27,10 @@ class AgendaService {
       final list = <Agenda>[];
       for (final doc in snapshot.docs) {
         try {
-          list.add(Agenda.fromMap(doc.data(), doc.id));
+          final data = doc.data() as Map<String, dynamic>?;
+          if (data != null) {
+            list.add(Agenda.fromMap(data, doc.id));
+          }
         } catch (e) {
           debugPrint(
             '[OrgaFlow AgendaService] Gagal parse agenda ${doc.id}: $e',
@@ -50,6 +53,7 @@ class AgendaService {
     required String tipe,
     required String lokasi,
     String? linkMeeting,
+    String? linkAbsensi,
     required DateTime tanggalWaktu,
     DateTime? selesaiWaktu,
   }) async {
@@ -70,6 +74,8 @@ class AgendaService {
         'lokasi': lokasi.trim(),
         if (linkMeeting != null && linkMeeting.trim().isNotEmpty)
           'link_meeting': linkMeeting.trim(),
+        if (linkAbsensi != null && linkAbsensi.trim().isNotEmpty)
+          'link_absensi': linkAbsensi.trim(),
         'tanggal_waktu': Timestamp.fromDate(tanggalWaktu),
         if (selesaiWaktu != null)
           'selesai_waktu': Timestamp.fromDate(selesaiWaktu),
@@ -99,6 +105,7 @@ class AgendaService {
     required String tipe,
     required String lokasi,
     String? linkMeeting,
+    String? linkAbsensi,
     required DateTime tanggalWaktu,
     DateTime? selesaiWaktu,
   }) async {
@@ -116,6 +123,9 @@ class AgendaService {
         'lokasi': lokasi.trim(),
         'link_meeting': (linkMeeting != null && linkMeeting.trim().isNotEmpty)
             ? linkMeeting.trim()
+            : FieldValue.delete(),
+        'link_absensi': (linkAbsensi != null && linkAbsensi.trim().isNotEmpty)
+            ? linkAbsensi.trim()
             : FieldValue.delete(),
         'tanggal_waktu': Timestamp.fromDate(tanggalWaktu),
         'selesai_waktu': selesaiWaktu != null
