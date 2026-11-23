@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../enums/user_role.dart';
 import '../../models/user_profile.dart';
@@ -9,14 +8,11 @@ import '../../services/division_service.dart';
 import '../agenda/agenda_page.dart';
 import '../approval/dekan_approval_page.dart';
 import '../finance/finance_page.dart';
-import '../profile/profile_page.dart';
 import '../tasks/tasks_page.dart';
 import '../users/user_approval_page.dart';
 import 'dashboard_home_view.dart';
 import '../../widgets/custom_bottom_nav.dart';
 
-/// Halaman Kerangka Dashboard Utama untuk Seluruh Role di OrgaFlow.
-/// Mengatur navigasi tab bawah (Bottom Navigation Bar) secara dinamis sesuai role.
 class DashboardPage extends StatefulWidget {
   final UserProfile profile;
   final AuthService? authService;
@@ -36,7 +32,6 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   int _selectedIndex = 0;
 
-  // _navItems tetap di sini karena bergantung pada role user
   List<DashboardNavItem> get _navItems {
     final role = widget.profile.role;
     final items = <DashboardNavItem>[
@@ -57,7 +52,6 @@ class _DashboardPageState extends State<DashboardPage> {
       );
     }
 
-    // Semua role memiliki akses tab Keuangan
     items.add(
       const DashboardNavItem(
         label: 'Keuangan',
@@ -91,49 +85,8 @@ class _DashboardPageState extends State<DashboardPage> {
     final currentLabel = navItems[clampedIndex].label;
 
     return Scaffold(
-      extendBody: true,
       backgroundColor: AppTheme.background,
-
-      appBar: AppBar(
-        title: const Text(
-          AppConstants.appName,
-          style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: -0.3),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: InkWell(
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => ProfilePage(
-                      profile: widget.profile,
-                      authService: widget.authService,
-                      divisionNameLoader: widget.divisionNameLoader,
-                    ),
-                  ),
-                );
-              },
-              borderRadius: BorderRadius.circular(20),
-              child: CircleAvatar(
-                radius: 16,
-                backgroundColor: AppTheme.lightBlue,
-                backgroundImage: widget.profile.fotoUrl?.isNotEmpty == true
-                    ? NetworkImage(widget.profile.fotoUrl!)
-                    : null,
-                child: widget.profile.fotoUrl?.isNotEmpty == true
-                    ? null
-                    : const Icon(
-                        Icons.person_rounded,
-                        color: AppTheme.primaryBlue,
-                        size: 18,
-                      ),
-              ),
-            ),
-          ),
-        ],
-      ),
-
+      extendBody: true,
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 300),
         child: KeyedSubtree(
@@ -141,10 +94,11 @@ class _DashboardPageState extends State<DashboardPage> {
           child: _buildCurrentTab(currentLabel),
         ),
       ),
-
       bottomNavigationBar: CustomBottomNavBar(
         selectedIndex: clampedIndex,
-        onItemSelected: (index) => setState(() => _selectedIndex = index),
+        onItemSelected: (index) {
+          setState(() => _selectedIndex = index);
+        },
         items: navItems,
       ),
     );
@@ -155,9 +109,11 @@ class _DashboardPageState extends State<DashboardPage> {
       case 'Beranda':
         return DashboardHomeView(
           profile: widget.profile,
+          authService: widget.authService,
           divisionNameLoader: widget.divisionNameLoader,
           onNavigateToTasks: () => _navigateToLabel('Tugas'),
           onNavigateToAgenda: () => _navigateToLabel('Agenda'),
+          onNavigateToFinance: () => _navigateToLabel('Keuangan'),
         );
       case 'Tugas':
         return TasksPage(role: widget.profile.role);

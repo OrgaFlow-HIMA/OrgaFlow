@@ -253,62 +253,65 @@ class _UserApprovalPageState extends State<UserApprovalPage>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.background,
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Persetujuan & Manajemen Akun',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.textPrimary,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Verifikasi pendaftaran akun mandiri dan kelola anggota organisasi',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppTheme.surface,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppTheme.borderLight),
-                    ),
-                    child: TabBar(
-                      controller: _tabController,
-                      labelColor: AppTheme.primaryBlue,
-                      unselectedLabelColor: AppTheme.textSecondary,
-                      indicatorColor: AppTheme.primaryBlue,
-                      dividerColor: Colors.transparent,
-                      labelStyle: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
+      body: SafeArea(
+        bottom: false,
+        child: NestedScrollView(
+          headerSliverBuilder: (context, innerBoxIsScrolled) => [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Persetujuan & Manajemen Akun',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.textPrimary,
+                        letterSpacing: -0.5,
                       ),
-                      tabs: const [
-                        Tab(text: 'Perlu Verifikasi'),
-                        Tab(text: 'Daftar Seluruh Akun'),
-                      ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Verifikasi pendaftaran akun mandiri dan kelola anggota organisasi',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppTheme.surface,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppTheme.borderLight),
+                      ),
+                      child: TabBar(
+                        controller: _tabController,
+                        labelColor: AppTheme.primaryBlue,
+                        unselectedLabelColor: AppTheme.textSecondary,
+                        indicatorColor: AppTheme.primaryBlue,
+                        dividerColor: Colors.transparent,
+                        labelStyle: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                        tabs: const [
+                          Tab(text: 'Perlu Verifikasi'),
+                          Tab(text: 'Daftar Seluruh Akun'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
+          ],
+          body: TabBarView(
+            controller: _tabController,
+            children: [_buildPendingList(), _buildAllUsersList()],
           ),
-        ],
-        body: TabBarView(
-          controller: _tabController,
-          children: [_buildPendingList(), _buildAllUsersList()],
         ),
       ),
     );
@@ -486,7 +489,8 @@ class _UserApprovalPageState extends State<UserApprovalPage>
                               width: double.infinity,
                               child: ElevatedButton.icon(
                                 onPressed: () => _openOrDownloadDocument(
-                                    user.suratTugasUrl!),
+                                  user.suratTugasUrl!,
+                                ),
                                 icon: const Icon(
                                   Icons.download_rounded,
                                   size: 18,

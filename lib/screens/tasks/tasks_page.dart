@@ -160,7 +160,7 @@ class _TasksPageState extends State<TasksPage> {
             onRefresh: () async =>
                 await Future<void>.delayed(const Duration(milliseconds: 300)),
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 120),
               children: [
                 // Header (dengan tombol Buat Tugas khusus Sekretaris)
                 Row(
@@ -170,6 +170,8 @@ class _TasksPageState extends State<TasksPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          const SizedBox(height: 48),
+
                           Text(
                             title,
                             style: const TextStyle(

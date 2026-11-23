@@ -261,77 +261,99 @@ class _FinancePageState extends State<FinancePage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.background,
-      body: StreamBuilder<List<FinanceTransaction>>(
-        stream: _service.watchTransactions(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final allTransactions = snapshot.data ?? [];
-
-          // Hitung Saldo & Arus Kas Realtime
-          int totalMasuk = 0;
-          int totalKeluar = 0;
-          for (final tx in allTransactions) {
-            if (tx.isIncome) {
-              totalMasuk += tx.nominal;
-            } else {
-              totalKeluar += tx.nominal;
+    return SafeArea(
+      top: true,
+      bottom: false,
+      child: Container(
+        color: AppTheme.background,
+        child: StreamBuilder<List<FinanceTransaction>>(
+          stream: _service.watchTransactions(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
             }
-          }
-          final saldoAktif = totalMasuk - totalKeluar;
 
-          final tagihanKas = allTransactions
-              .where((tx) => tx.isTagihanAnggota)
-              .toList();
-          final arusKas = allTransactions;
+            final allTransactions = snapshot.data ?? [];
 
-          return NestedScrollView(
-            headerSliverBuilder: (context, innerBoxIsScrolled) => [
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            // Hitung saldo dan arus kas realtime.
+            int totalMasuk = 0;
+            int totalKeluar = 0;
+
+            for (final tx in allTransactions) {
+              if (tx.isIncome) {
+                totalMasuk += tx.nominal;
+              } else {
+                totalKeluar += tx.nominal;
+              }
+            }
+
+            final saldoAktif = totalMasuk - totalKeluar;
+
+            final tagihanKas = allTransactions
+                .where((tx) => tx.isTagihanAnggota)
+                .toList();
+
+            final arusKas = allTransactions;
+
+            return Stack(
+              children: [
+                NestedScrollView(
+                  headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildHeaderGreeting(allTransactions),
+                            const SizedBox(height: 14),
+                            _buildSummaryCard(
+                              saldoAktif,
+                              totalMasuk,
+                              totalKeluar,
+                            ),
+                            const SizedBox(height: 14),
+                            _buildTabBar(),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                  body: TabBarView(
+                    controller: _tabController,
                     children: [
-                      _buildHeaderGreeting(allTransactions),
-                      const SizedBox(height: 14),
-                      _buildSummaryCard(saldoAktif, totalMasuk, totalKeluar),
-                      const SizedBox(height: 14),
-                      _buildTabBar(),
+                      _buildTagihanKasTab(tagihanKas),
+                      _buildArusKasTab(arusKas),
                     ],
                   ),
                 ),
-              ),
-            ],
-            body: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildTagihanKasTab(tagihanKas),
-                _buildArusKasTab(arusKas),
+
+                // Tombol tambah transaksi.
+                if (_isBendahara)
+                  Positioned(
+                    right: 16,
+                    bottom: 24,
+                    child: FloatingActionButton.extended(
+                      onPressed: () => AddFinanceModal.show(
+                        context,
+                        financeService: _service,
+                      ),
+                      backgroundColor: AppTheme.primaryBlue,
+                      icon: const Icon(Icons.add_rounded, color: Colors.white),
+                      label: const Text(
+                        'Buat Kas / Transaksi',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
               ],
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
-      floatingActionButton: _isBendahara
-          ? FloatingActionButton.extended(
-              onPressed: () =>
-                  AddFinanceModal.show(context, financeService: _service),
-              backgroundColor: AppTheme.primaryBlue,
-              icon: const Icon(Icons.add_rounded, color: Colors.white),
-              label: const Text(
-                'Buat Kas / Transaksi',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            )
-          : null,
     );
   }
 

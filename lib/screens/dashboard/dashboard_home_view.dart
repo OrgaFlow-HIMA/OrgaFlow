@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
@@ -6,9 +8,11 @@ import '../../models/agenda.dart';
 import '../../models/task.dart';
 import '../../models/user_profile.dart';
 import '../../services/agenda_service.dart';
+import '../../services/auth_service.dart';
 import '../../services/division_service.dart';
 import '../../services/task_service.dart';
 import '../../widgets/division_name_text.dart';
+import '../profile/profile_page.dart';
 
 class DashboardCaptions {
   final String greetingSubtitle;
@@ -24,20 +28,24 @@ class DashboardCaptions {
   });
 }
 
-/// Tampilan Beranda Dashboard Universal untuk Seluruh Role (Pengurus & Anggota).
-/// Menggunakan fungsi caption berbasis role dan mengambil data riil dari Firestore.
 class DashboardHomeView extends StatefulWidget {
   final UserProfile profile;
+  final AuthService? authService;
   final DivisionNameLoader? divisionNameLoader;
   final VoidCallback? onNavigateToTasks;
   final VoidCallback? onNavigateToAgenda;
+  final VoidCallback? onNavigateToFinance;
+  final VoidCallback? onNavigateToAdministration;
 
   const DashboardHomeView({
     super.key,
     required this.profile,
+    this.authService,
     this.divisionNameLoader,
     this.onNavigateToTasks,
     this.onNavigateToAgenda,
+    this.onNavigateToFinance,
+    this.onNavigateToAdministration,
   });
 
   @override
@@ -106,247 +114,392 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
     }
   }
 
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+
+    if (hour >= 4 && hour < 11) return 'Selamat pagi';
+    if (hour >= 11 && hour < 15) return 'Selamat siang';
+    if (hour >= 15 && hour < 18) return 'Selamat sore';
+    return 'Selamat malam';
+  }
+
   @override
   Widget build(BuildContext context) {
     final captions = _getCaptions(widget.profile.role);
     final isSekretaris = widget.profile.role == UserRole.sekretaris;
 
-    // Stream tugas: Sekretaris memantau semua tugas; role lain memantau tugas miliknya
     final tasksStream = isSekretaris
         ? _taskService.watchAllTasks()
         : _taskService.watchTasksForRole(widget.profile.role);
 
     final agendaStream = _agendaService.watchAgendas();
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFFDCE7FF),
+            Color(0xFFEDF2FF),
+            AppTheme.background,
+            Colors.white,
+          ],
+          stops: [0.0, 0.25, 0.65, 1.0],
+        ),
+      ),
+      child: Stack(
         children: [
-          // 1. Welcome Card
-          _buildWelcomeCard(captions),
-          const SizedBox(height: 20),
-
-          // 2. Summary Cards (Real-time Tasks & Agendas)
-          StreamBuilder<List<Task>>(
-            stream: tasksStream,
-            builder: (context, taskSnap) {
-              final tasks = taskSnap.data ?? [];
-              final todoTasks = tasks.where((t) => !t.isDone).toList();
-
-              return StreamBuilder<List<Agenda>>(
-                stream: agendaStream,
-                builder: (context, agendaSnap) {
-                  final agendas = agendaSnap.data ?? [];
-                  final upcomingAgendas = agendas
-                      .where((a) => !a.isPast)
-                      .toList();
-
-                  return Row(
-                    children: [
-                      Expanded(
-                        child: _buildSummaryCard(
-                          title: 'Tugas Menunggu',
-                          value: '${todoTasks.length} Tugas',
-                          subtitle: todoTasks.isEmpty
-                              ? 'Semua terselesaikan'
-                              : '${todoTasks.length} perlu dikerjakan',
-                          icon: Icons.assignment_turned_in_outlined,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildSummaryCard(
-                          title: 'Agenda Mendatang',
-                          value: '${upcomingAgendas.length} Agenda',
-                          subtitle: upcomingAgendas.isEmpty
-                              ? 'Tidak ada jadwal'
-                              : 'Jadwal aktif himpunan',
-                          icon: Icons.event_available_outlined,
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              );
-            },
+          // Abstract flowing wave background
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 550,
+            child: CustomPaint(
+              painter: DashboardBackgroundPainter(),
+              size: Size.infinite,
+            ),
           ),
-          const SizedBox(height: 24),
 
-          // 3. Bagian Persetujuan / Tugas (Real-time dari Firestore Tasks)
-          StreamBuilder<List<Task>>(
-            stream: tasksStream,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: CircularProgressIndicator(),
-                  ),
-                );
-              }
-
-              final allTasks = snapshot.data ?? [];
-              final pendingTasks = allTasks.where((t) => !t.isDone).toList();
-
-              return Column(
+          // Konten dashboard
+          SafeArea(
+            bottom: false,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.only(top: 16, bottom: 120),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildSectionHeader(
-                    title: captions.taskSectionTitle,
-                    isBadgeDanger: pendingTasks.isNotEmpty,
-                    actionLabel: widget.onNavigateToTasks != null
-                        ? 'Lihat Semua'
-                        : null,
-                    onAction: widget.onNavigateToTasks,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    captions.taskSectionSubtitle,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.textSecondary,
+                  // HEADER, GREETING, DAN RINGKASAN
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildBrandHeader(),
+                        const SizedBox(height: 25),
+                        _buildWelcomeCard(captions),
+                        const SizedBox(height: 24),
+
+                        // Ringkasan real-time Firestore
+                        StreamBuilder<List<Task>>(
+                          stream: tasksStream,
+                          builder: (context, taskSnap) {
+                            final tasks = taskSnap.data ?? [];
+                            final todoTasks = tasks
+                                .where((task) => !task.isDone)
+                                .toList();
+
+                            return StreamBuilder<List<Agenda>>(
+                              stream: agendaStream,
+                              builder: (context, agendaSnap) {
+                                final agendas = agendaSnap.data ?? [];
+                                final upcomingAgendas = agendas
+                                    .where((agenda) => !agenda.isPast)
+                                    .toList();
+
+                                return Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildSummaryCard(
+                                        title: 'Tugas Menunggu',
+                                        value: '${todoTasks.length}',
+                                        subtitle: todoTasks.isEmpty
+                                            ? 'Semua terselesaikan'
+                                            : 'Perlu dikerjakan',
+                                        icon: Icons.assignment_outlined,
+                                        gradient: const [
+                                          AppTheme.primaryBlue,
+                                          AppTheme.accentBlue,
+                                        ],
+                                        onTap: widget.onNavigateToTasks,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: _buildSummaryCard(
+                                        title: 'Agenda Mendatang',
+                                        value: '${upcomingAgendas.length}',
+                                        subtitle: upcomingAgendas.isEmpty
+                                            ? 'Tidak ada jadwal'
+                                            : 'Jadwal aktif himpunan',
+                                        icon: Icons.event_available_outlined,
+                                        gradient: const [
+                                          AppTheme.primaryBlue,
+                                          AppTheme.accentBlue,
+                                        ],
+                                        onTap: widget.onNavigateToAgenda,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 12),
 
-                  // Handling Kosong vs Ada Tugas
-                  if (pendingTasks.isEmpty)
-                    _buildEmptyTaskCard()
-                  else
-                    ...pendingTasks
-                        .take(3)
-                        .map((task) => _buildDashboardTaskCard(task)),
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 24),
+                  const SizedBox(height: 28),
 
-          // 4. Bagian Agenda Berikutnya (Real-time dari Firestore Agenda)
-          StreamBuilder<List<Agenda>>(
-            stream: agendaStream,
-            builder: (context, snapshot) {
-              final agendas = snapshot.data ?? [];
-              final upcomingAgendas = agendas.where((a) => !a.isPast).toList();
-              final nextAgenda = upcomingAgendas.isNotEmpty
-                  ? upcomingAgendas.first
-                  : null;
+                  // PANEL PUTIH: LAYANAN SAMPAI AGENDA
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(20, 28, 20, 30),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(30),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Layanan',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildCategories(),
 
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildSectionHeader(
-                    title: 'Agenda Berikutnya',
-                    actionLabel: widget.onNavigateToAgenda != null
-                        ? 'Semua Agenda →'
-                        : null,
-                    onAction: widget.onNavigateToAgenda,
+                        const SizedBox(height: 28),
+
+                        // Tugas dari Firestore
+                        StreamBuilder<List<Task>>(
+                          stream: tasksStream,
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                    ConnectionState.waiting &&
+                                !snapshot.hasData) {
+                              return _buildLoading();
+                            }
+
+                            final allTasks = snapshot.data ?? [];
+                            final pendingTasks = allTasks
+                                .where((task) => !task.isDone)
+                                .toList();
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildSectionHeader(
+                                  captions.taskSectionTitle,
+                                  actionLabel: widget.onNavigateToTasks != null
+                                      ? 'Lihat Semua'
+                                      : null,
+                                  onAction: widget.onNavigateToTasks,
+                                ),
+                                const SizedBox(height: 5),
+                                Text(
+                                  captions.taskSectionSubtitle,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppTheme.textSecondary,
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                                if (pendingTasks.isEmpty)
+                                  _buildEmptyTaskCard()
+                                else
+                                  ...pendingTasks
+                                      .take(3)
+                                      .map(_buildDashboardTaskCard),
+                              ],
+                            );
+                          },
+                        ),
+
+                        const SizedBox(height: 28),
+
+                        // Agenda berikutnya dari Firestore
+                        StreamBuilder<List<Agenda>>(
+                          stream: agendaStream,
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                    ConnectionState.waiting &&
+                                !snapshot.hasData) {
+                              return _buildLoading();
+                            }
+
+                            final agendas = snapshot.data ?? [];
+                            final upcomingAgendas = agendas
+                                .where((agenda) => !agenda.isPast)
+                                .toList();
+
+                            final nextAgenda = upcomingAgendas.isNotEmpty
+                                ? upcomingAgendas.first
+                                : null;
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildSectionHeader(
+                                  'Agenda Berikutnya',
+                                  actionLabel: widget.onNavigateToAgenda != null
+                                      ? 'Lihat Semua'
+                                      : null,
+                                  onAction: widget.onNavigateToAgenda,
+                                ),
+                                const SizedBox(height: 14),
+                                if (nextAgenda == null)
+                                  _buildEmptyAgendaCard()
+                                else
+                                  _buildUpcomingAgendaCard(nextAgenda),
+                              ],
+                            );
+                          },
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  if (nextAgenda == null)
-                    _buildEmptyAgendaCard()
-                  else
-                    _buildUpcomingAgendaCard(nextAgenda),
                 ],
-              );
-            },
+              ),
+            ),
           ),
-          const SizedBox(height: 24),
         ],
       ),
     );
   }
 
-  // ---------- Widgets ----------
-
-  Widget _buildWelcomeCard(DashboardCaptions captions) {
-    final role = widget.profile.role;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.borderLight),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Halo, ${widget.profile.nama} 👋',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                if (role == UserRole.kepalaDivisi)
-                  DivisionNameText(
-                    divisionId: widget.profile.divisiId,
-                    prefix: role.label,
-                    divisionNameLoader: widget.divisionNameLoader,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textSecondary,
-                    ),
-                  )
-                else
-                  Text(
-                    '${role.label} • HIMA TI',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                const SizedBox(height: 4),
-                Text(
-                  captions.greetingSubtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.textMuted,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: widget.profile.isActive
-                  ? AppTheme.successBg
-                  : AppTheme.warningBg,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              widget.profile.isActive ? 'Aktif' : 'Nonaktif',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: widget.profile.isActive
-                    ? AppTheme.success
-                    : AppTheme.warning,
+  Widget _buildBrandHeader() {
+    return Row(
+      children: [
+        Image.asset(
+          'assets/images/logo-ogf.png',
+          width: 32,
+          height: 32,
+          fit: BoxFit.contain,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Transform.translate(
+              offset: const Offset(0, 3),
+              child: const Image(
+                image: AssetImage('assets/images/logo-textogf.png'),
+                height: 20,
+                fit: BoxFit.contain,
               ),
             ),
           ),
+        ),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.45),
+                shape: BoxShape.circle,
+              ),
+              child: IconButton(
+                onPressed: () {
+                  // TODO: Navigasi ke halaman notifikasi
+                },
+                tooltip: 'Notifikasi',
+                icon: const Icon(
+                  Icons.notifications_none_rounded,
+                  color: AppTheme.primaryBlue,
+                  size: 22,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(50),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.45),
+                shape: BoxShape.circle,
+              ),
+              child: InkWell(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => ProfilePage(
+                        profile: widget.profile,
+                        authService: widget.authService,
+                        divisionNameLoader: widget.divisionNameLoader,
+                      ),
+                    ),
+                  );
+                },
+                child: CircleAvatar(
+                  radius: 21,
+                  backgroundColor: Colors.transparent,
+                  backgroundImage: widget.profile.fotoUrl?.isNotEmpty == true
+                      ? NetworkImage(widget.profile.fotoUrl!)
+                      : null,
+                  child: widget.profile.fotoUrl?.isNotEmpty == true
+                      ? null
+                      : const Icon(
+                          Icons.person_rounded,
+                          color: AppTheme.primaryBlue,
+                          size: 22,
+                        ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWelcomeCard(DashboardCaptions captions) {
+    final role = widget.profile.role;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${_getGreeting()}, ${widget.profile.nama}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppTheme.textPrimary,
+              fontSize: 26,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.6,
+            ),
+          ),
+          const SizedBox(height: 2),
+          if (role == UserRole.kepalaDivisi)
+            DivisionNameText(
+              divisionId: widget.profile.divisiId,
+              prefix: role.label,
+              divisionNameLoader: widget.divisionNameLoader,
+              style: const TextStyle(
+                color: AppTheme.textSecondary,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            )
+          else
+            Text(
+              '${role.label} • HIMA Teknik Informatika',
+              style: const TextStyle(
+                color: AppTheme.textSecondary,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
         ],
       ),
     );
@@ -357,70 +510,148 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
     required String value,
     required String subtitle,
     required IconData icon,
+    required List<Color> gradient,
+    VoidCallback? onTap,
   }) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 110),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.borderLight),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textSecondary,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 132),
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: gradient,
+          ),
+          borderRadius: BorderRadius.circular(19),
+          boxShadow: [
+            BoxShadow(
+              color: gradient.first.withOpacity(0.20),
+              blurRadius: 13,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 4),
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: AppTheme.lightBlue,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, size: 16, color: AppTheme.primaryBlue),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: AppTheme.primaryBlue,
+                Icon(icon, color: Colors.white, size: 19),
+              ],
             ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            subtitle,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
-          ),
-        ],
+            const SizedBox(height: 14),
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 25,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white70, fontSize: 10),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildSectionHeader({
-    required String title,
-    String? badgeText,
-    bool isBadgeDanger = false,
+  Widget _buildCategories() {
+    final categories = [
+      _CategoryItem(
+        title: 'Tugas',
+        icon: Icons.assignment_outlined,
+        color: AppTheme.lightBlue,
+        onTap: widget.onNavigateToTasks,
+      ),
+      _CategoryItem(
+        title: 'Agenda',
+        icon: Icons.calendar_month_outlined,
+        color: AppTheme.lightBlue,
+        onTap: widget.onNavigateToAgenda,
+      ),
+      _CategoryItem(
+        title: 'Keuangan',
+        icon: Icons.account_balance_wallet_outlined,
+        color: AppTheme.lightBlue,
+        onTap: widget.onNavigateToFinance,
+      ),
+      _CategoryItem(
+        title: 'Administrasi',
+        icon: Icons.folder_open_outlined,
+        color: AppTheme.lightBlue,
+        onTap: widget.onNavigateToAdministration,
+      ),
+    ];
+
+    return Row(
+      children: [
+        for (int i = 0; i < categories.length; i++) ...[
+          if (i > 0) const SizedBox(width: 8),
+          Expanded(child: _buildCategoryItem(categories[i])),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildCategoryItem(_CategoryItem item) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: item.onTap,
+        borderRadius: BorderRadius.circular(15),
+        child: Column(
+          children: [
+            Container(
+              width: 58,
+              height: 58,
+              decoration: BoxDecoration(
+                color: AppTheme.accentBlue.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(17),
+              ),
+              child: Icon(item.icon, size: 27, color: AppTheme.primaryBlue),
+            ),
+            const SizedBox(height: 9),
+            Text(
+              item.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(
+    String title, {
     String? actionLabel,
     VoidCallback? onAction,
   }) {
@@ -431,59 +662,72 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
             title,
             style: const TextStyle(
               fontSize: 16,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w700,
               color: AppTheme.textPrimary,
             ),
           ),
         ),
-        if (badgeText != null)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: isBadgeDanger ? AppTheme.errorBg : AppTheme.lightBlue,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              badgeText,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: isBadgeDanger ? AppTheme.error : AppTheme.primaryBlue,
-              ),
-            ),
-          ),
-        if (actionLabel != null) ...[
-          const SizedBox(width: 8),
+        if (actionLabel != null)
           GestureDetector(
             onTap: onAction,
-            child: Text(
-              actionLabel,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.primaryBlue,
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  actionLabel,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.accentBlue,
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  size: 20,
+                  color: AppTheme.accentBlue,
+                ),
+              ],
             ),
           ),
-        ],
       ],
+    );
+  }
+
+  Widget _buildLoading() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 25),
+      child: Center(
+        child: SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(strokeWidth: 2.5),
+        ),
+      ),
     );
   }
 
   Widget _buildDashboardTaskCard(Task task) {
     final isSekretaris = widget.profile.role == UserRole.sekretaris;
+
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: 11),
+      padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(17),
         border: Border.all(
           color: task.isOverdue
               ? AppTheme.error.withOpacity(0.3)
               : AppTheme.borderLight,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryBlue.withOpacity(0.035),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -494,7 +738,7 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
-                    vertical: 2,
+                    vertical: 3,
                   ),
                   decoration: BoxDecoration(
                     color: AppTheme.lightBlue,
@@ -517,7 +761,7 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.textPrimary,
                   ),
@@ -525,7 +769,7 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
               ),
               const SizedBox(width: 6),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: task.isOverdue ? AppTheme.errorBg : AppTheme.warningBg,
                   borderRadius: BorderRadius.circular(6),
@@ -533,7 +777,7 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
                 child: Text(
                   task.isOverdue ? 'Terlambat' : 'Belum Selesai',
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 9,
                     fontWeight: FontWeight.w700,
                     color: task.isOverdue ? AppTheme.error : AppTheme.warning,
                   ),
@@ -542,7 +786,7 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
             ],
           ),
           if (task.description.isNotEmpty) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Text(
               task.description,
               maxLines: 2,
@@ -550,27 +794,27 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
               style: const TextStyle(
                 fontSize: 11,
                 color: AppTheme.textSecondary,
-                height: 1.3,
+                height: 1.4,
               ),
             ),
           ],
           if (task.dueAt != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Row(
               children: [
                 Icon(
                   task.isOverdue
                       ? Icons.warning_amber_rounded
                       : Icons.access_time_rounded,
-                  size: 13,
+                  size: 14,
                   color: task.isOverdue ? AppTheme.error : AppTheme.textMuted,
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 5),
                 Text(
                   'Tenggat: ${task.dueAt!.day}/${task.dueAt!.month}/${task.dueAt!.year}',
                   style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
                     color: task.isOverdue
                         ? AppTheme.error
                         : AppTheme.textSecondary,
@@ -585,117 +829,99 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
   }
 
   Widget _buildEmptyTaskCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: AppTheme.borderLight),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppTheme.successBg,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.check_circle_outline_rounded,
-              size: 28,
-              color: AppTheme.success,
-            ),
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            'Tidak Ada Tugas Menunggu',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            widget.profile.role == UserRole.sekretaris
-                ? 'Belum ada tugas organisasi yang aktif.'
-                : 'Semua tugas untuk ${widget.profile.role.label} saat ini telah terselesaikan.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
-          ),
-        ],
-      ),
+    return _buildEmptyCard(
+      icon: Icons.task_alt_rounded,
+      title: 'Tidak Ada Tugas Menunggu',
+      subtitle: widget.profile.role == UserRole.sekretaris
+          ? 'Belum ada tugas organisasi yang aktif.'
+          : 'Semua tugas untuk ${widget.profile.role.label} saat ini telah terselesaikan.',
+      color: AppTheme.success,
+      background: AppTheme.successBg,
     );
   }
 
   Widget _buildUpcomingAgendaCard(Agenda agenda) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppTheme.borderLight),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryBlue.withOpacity(0.035),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
-            width: 50,
-            height: 50,
+            width: 53,
+            height: 53,
             decoration: BoxDecoration(
               color: AppTheme.lightBlue,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(
               agenda.isOnline
-                  ? Icons.videocam_rounded
-                  : Icons.calendar_month_rounded,
+                  ? Icons.videocam_outlined
+                  : Icons.calendar_month_outlined,
               color: AppTheme.primaryBlue,
-              size: 24,
+              size: 25,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 13),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: agenda.isStatusDanger
-                            ? AppTheme.errorBg
-                            : AppTheme.lightBlue,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        agenda.statusTag,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
                           color: agenda.isStatusDanger
-                              ? AppTheme.error
-                              : AppTheme.primaryBlue,
+                              ? AppTheme.errorBg
+                              : AppTheme.lightBlue,
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        child: Text(
+                          agenda.statusTag,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            color: agenda.isStatusDanger
+                                ? AppTheme.error
+                                : AppTheme.primaryBlue,
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      agenda.kategori,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textMuted,
+                    const SizedBox(width: 7),
+                    Flexible(
+                      child: Text(
+                        agenda.kategori,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textMuted,
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 7),
                 Text(
                   agenda.judul,
                   maxLines: 1,
@@ -706,13 +932,13 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
                     color: AppTheme.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Text(
                   '${agenda.formattedDateTime} (${agenda.isOnline ? 'Online' : 'Offline'})',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 11,
+                    fontSize: 10,
                     color: AppTheme.textSecondary,
                   ),
                 ),
@@ -725,40 +951,175 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
   }
 
   Widget _buildEmptyAgendaCard() {
+    return _buildEmptyCard(
+      icon: Icons.event_busy_outlined,
+      title: 'Belum Ada Agenda Mendatang',
+      subtitle: 'Jadwal kegiatan atau rapat baru akan tampil di sini.',
+      color: AppTheme.textMuted,
+      background: AppTheme.lightBlue,
+    );
+  }
+
+  Widget _buildEmptyCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required Color background,
+  }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 23, horizontal: 17),
       decoration: BoxDecoration(
         color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppTheme.borderLight),
       ),
-      child: const Row(
+      child: Column(
         children: [
-          Icon(Icons.event_busy_outlined, color: AppTheme.textMuted, size: 28),
-          SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Belum Ada Agenda Mendatang',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.textPrimary,
-                  ),
-                ),
-                SizedBox(height: 2),
-                Text(
-                  'Jadwal kegiatan atau rapat baru akan tampil di sini.',
-                  style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
-                ),
-              ],
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: background,
+              shape: BoxShape.circle,
             ),
+            child: Icon(icon, size: 25, color: color),
+          ),
+          const SizedBox(height: 11),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
           ),
         ],
       ),
     );
   }
+}
+
+class DashboardBackgroundPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final width = size.width;
+    final height = size.height;
+
+    // Lapisan gelombang utama
+    final wave1 = Path()
+      ..moveTo(0, 0)
+      ..lineTo(width, 0)
+      ..lineTo(width, height * 0.48)
+      ..cubicTo(
+        width * 0.78,
+        height * 0.58,
+        width * 0.55,
+        height * 0.35,
+        width * 0.30,
+        height * 0.48,
+      )
+      ..cubicTo(
+        width * 0.15,
+        height * 0.56,
+        width * 0.08,
+        height * 0.50,
+        0,
+        height * 0.43,
+      )
+      ..close();
+
+    final paint1 = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFFB8CCFF), Color(0xFFD5E1FF), Color(0xFFEAF0FF)],
+      ).createShader(Rect.fromLTWH(0, 0, width, height));
+
+    canvas.drawPath(wave1, paint1);
+
+    // Gelombang kedua
+    final wave2 = Path()
+      ..moveTo(0, height * 0.28)
+      ..cubicTo(
+        width * 0.25,
+        height * 0.42,
+        width * 0.55,
+        height * 0.18,
+        width,
+        height * 0.38,
+      )
+      ..lineTo(width, height * 0.65)
+      ..cubicTo(
+        width * 0.68,
+        height * 0.53,
+        width * 0.35,
+        height * 0.72,
+        0,
+        height * 0.55,
+      )
+      ..close();
+
+    final paint2 = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topRight,
+        end: Alignment.bottomLeft,
+        colors: [Color(0x5586A8FF), Color(0x3386A8FF), Color(0x00FFFFFF)],
+      ).createShader(Rect.fromLTWH(0, 0, width, height));
+
+    canvas.drawPath(wave2, paint2);
+
+    // Aksen gelombang transparan
+    final wave3 = Path()
+      ..moveTo(0, height * 0.48)
+      ..cubicTo(
+        width * 0.30,
+        height * 0.65,
+        width * 0.65,
+        height * 0.38,
+        width,
+        height * 0.55,
+      )
+      ..lineTo(width, height * 0.78)
+      ..cubicTo(
+        width * 0.60,
+        height * 0.67,
+        width * 0.30,
+        height * 0.83,
+        0,
+        height * 0.68,
+      )
+      ..close();
+
+    final paint3 = Paint()..color = const Color(0x2286A8FF);
+
+    canvas.drawPath(wave3, paint3);
+  }
+
+  @override
+  bool shouldRepaint(covariant DashboardBackgroundPainter oldDelegate) {
+    return false;
+  }
+}
+
+class _CategoryItem {
+  final String title;
+  final IconData icon;
+  final Color color;
+  final VoidCallback? onTap;
+
+  const _CategoryItem({
+    required this.title,
+    required this.icon,
+    required this.color,
+    this.onTap,
+  });
 }

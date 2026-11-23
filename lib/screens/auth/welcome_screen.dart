@@ -17,13 +17,14 @@ class WelcomeScreen extends StatelessWidget {
         children: [
           // 1. GAMBAR ILUSTRASI (Sebagai Background Utama)
           Positioned.fill(
-            bottom:
-                MediaQuery.of(context).size.height *
-                0.4, // Sisakan ruang di bawah
-            child: Image.asset(
-              'assets/images/illustration-welcome.webp',
-              fit: BoxFit.cover,
-              alignment: const Alignment(0.0, -0.2), // Sedikit diturunkan
+            bottom: MediaQuery.of(context).size.height * 0.4,
+            child: Transform.scale(
+              scale: 1.1,
+              child: Image.asset(
+                'assets/images/illustration-welcome.webp',
+                fit: BoxFit.cover,
+                alignment: const Alignment(0.0, -0.2),
+              ),
             ),
           ),
 
@@ -69,7 +70,7 @@ class WelcomeScreen extends StatelessWidget {
                           'Kelola Organisasi\nJadi Lebih Mudah',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: 28,
+                            fontSize: 26,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF1A1A1A),
                             height: 1.2,

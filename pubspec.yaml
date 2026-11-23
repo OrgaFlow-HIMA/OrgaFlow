@@ -35,6 +35,8 @@ flutter:
   assets:
     - .env
     - assets/images/illustration-welcome.webp
+    - assets/images/logo-ogf.png
+    - assets/images/logo-textogf.png
 
 flutter_launcher_icons:
   android: true

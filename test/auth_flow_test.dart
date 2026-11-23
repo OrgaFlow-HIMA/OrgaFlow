@@ -76,7 +76,7 @@ void main() {
     });
 
     testWidgets(
-      'Setiap dari 5 role pengurus dapat dirender pada ManagementDashboard dengan label masing-masing',
+      'Setiap dari 5 role pengurus dapat dirender pada ManagementDashboard',
       (tester) async {
         final roles = [
           (UserRole.ketua, 'Ketua'),
@@ -104,9 +104,17 @@ void main() {
             ),
           );
 
-          expect(find.text('PENGURUS'), findsOneWidget);
-          expect(find.text('Role: ${item.$2}'), findsOneWidget);
-          expect(find.text('Dashboard Pengurus'), findsOneWidget);
+          // Menunggu proses async (stream) di dashboard selesai
+          await tester.pumpAndSettle();
+
+          // CARI TEKS YANG SESUAI DENGAN DESAIN BARU
+          expect(find.text('User ${item.$2}'), findsOneWidget); // Cek Nama User
+          expect(find.text('${item.$2} • HIMA TI'), findsOneWidget); // Cek Role
+          expect(find.text('OrgaFlow'), findsOneWidget); // Cek Logo/Header
+          expect(
+            find.text('Tugas Terbaru'),
+            findsOneWidget,
+          ); // Cek Section Tugas
         }
       },
     );
@@ -131,10 +139,14 @@ void main() {
           ),
         );
 
-        expect(find.text('ANGGOTA'), findsOneWidget);
-        expect(find.text('Dashboard Anggota'), findsOneWidget);
-        expect(find.text('Tugas Saya'), findsOneWidget);
-        expect(find.text('Absensi'), findsOneWidget);
+        // Menunggu proses async (stream) di dashboard selesai
+        await tester.pumpAndSettle();
+
+        // CARI TEKS YANG SESUAI DENGAN DESAIN BARU
+        expect(find.text('Ahmad Mahasiswa'), findsOneWidget);
+        expect(find.text('Anggota • HIMA TI'), findsOneWidget);
+        expect(find.text('Tugas Terbaru'), findsOneWidget);
+        expect(find.text('Agenda Terbaru'), findsOneWidget);
       },
     );
 

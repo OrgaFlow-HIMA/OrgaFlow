@@ -113,8 +113,9 @@ class _AgendaPageState extends State<AgendaPage> {
           onRefresh: () async =>
               await Future<void>.delayed(const Duration(milliseconds: 300)),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 120),
             children: [
+              const SizedBox(height: 48),
               // Header
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
