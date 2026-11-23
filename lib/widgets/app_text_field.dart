@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../core/theme/app_theme.dart';
 
 class AppTextField extends StatelessWidget {
@@ -29,21 +30,31 @@ class AppTextField extends StatelessWidget {
     this.onFieldSubmitted,
   });
 
+  // ===== Style seragam — konsisten dengan AddEditAgendaModal, CreateTaskModal, dll. =====
+  static const TextStyle _inputTextStyle = TextStyle(
+    fontSize: 12,
+    color: AppTheme.textPrimary,
+    height: 1.35,
+  );
+  static const TextStyle _hintStyle = TextStyle(
+    fontSize: 12,
+    color: AppTheme.textSecondary,
+    height: 1.35,
+  );
+  static const TextStyle _labelStyle = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w700,
+    color: AppTheme.textPrimary,
+    letterSpacing: 0.1,
+  );
+
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.textPrimary,
-            letterSpacing: 0.1,
-          ),
-        ),
-        const SizedBox(height: 8),
+        Text(label, style: _labelStyle),
+        const SizedBox(height: 6),
         TextFormField(
           controller: controller,
           obscureText: obscureText,
@@ -52,21 +63,53 @@ class AppTextField extends StatelessWidget {
           textInputAction: textInputAction,
           onFieldSubmitted: onFieldSubmitted,
           validator: validator,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: AppTheme.textPrimary,
-          ),
+          style: _inputTextStyle,
           decoration: InputDecoration(
             hintText: hint,
+            hintStyle: _hintStyle,
+            filled: true,
+            fillColor: enabled ? AppTheme.background : const Color(0xFFF1F5F9),
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 12,
+            ),
             prefixIcon: prefixIcon != null
-                ? Icon(
-                    prefixIcon,
-                    size: 20,
-                    color: enabled ? AppTheme.textSecondary : AppTheme.textMuted,
+                ? Padding(
+                    padding: const EdgeInsets.only(left: 12, right: 8),
+                    child: Icon(
+                      prefixIcon,
+                      size: 18,
+                      color: enabled
+                          ? AppTheme.textSecondary
+                          : AppTheme.textMuted,
+                    ),
                   )
                 : null,
+            prefixIconConstraints: prefixIcon != null
+                ? const BoxConstraints(minWidth: 0, minHeight: 0)
+                : null,
             suffixIcon: suffixIcon,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppTheme.borderLight),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppTheme.borderLight),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(
+                color: AppTheme.primaryBlue,
+                width: 1.4,
+              ),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppTheme.borderLight),
+            ),
+            errorStyle: const TextStyle(fontSize: 11),
           ),
         ),
       ],

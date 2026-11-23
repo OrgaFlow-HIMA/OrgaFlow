@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../core/theme/app_theme.dart';
 import '../services/division_service.dart';
 
 class DivisionNameText extends StatefulWidget {
@@ -55,31 +56,79 @@ class _DivisionNameTextState extends State<DivisionNameText> {
     return FutureBuilder<String?>(
       future: _divisionName,
       builder: (context, snapshot) {
-        final String divisionName;
-        if (widget.divisionId?.trim().isNotEmpty != true) {
-          divisionName = 'Divisi belum ditentukan';
-        } else if (snapshot.hasError) {
-          divisionName = _errorMessage(snapshot.error);
-        } else if (snapshot.connectionState != ConnectionState.done) {
-          divisionName = 'Memuat divisi...';
-        } else {
-          divisionName = snapshot.data ?? 'Divisi tidak ditemukan';
-        }
+        final result = _resolveDisplayState(snapshot);
+        final prefix = widget.prefix?.trim() ?? '';
 
-        final prefix = widget.prefix;
-        final label = prefix == null || prefix.isEmpty
-            ? divisionName
-            : '$prefix • $divisionName';
+        final label = prefix.isEmpty
+            ? result.label
+            : '$prefix • ${result.label}';
 
         return Text(
           label,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: widget.style,
+          style: (widget.style ?? const TextStyle(fontSize: 12)).copyWith(
+            color: widget.style?.color ?? result.color,
+            fontWeight: widget.style?.fontWeight ?? result.fontWeight,
+          ),
         );
       },
     );
   }
+
+  // =========================================================
+  // STATE RESOLVER
+  // =========================================================
+
+  _DivisionDisplayState _resolveDisplayState(AsyncSnapshot<String?> snapshot) {
+    // 1) Division ID kosong / null
+    final rawId = widget.divisionId?.trim() ?? '';
+    if (rawId.isEmpty) {
+      return const _DivisionDisplayState(
+        label: 'Divisi belum ditentukan',
+        color: AppTheme.textSecondary,
+        fontWeight: FontWeight.w500,
+      );
+    }
+
+    // 2) Error dari Firestore
+    if (snapshot.hasError) {
+      return _DivisionDisplayState(
+        label: _errorMessage(snapshot.error),
+        color: AppTheme.error,
+        fontWeight: FontWeight.w500,
+      );
+    }
+
+    // 3) Masih loading
+    if (snapshot.connectionState != ConnectionState.done) {
+      return const _DivisionDisplayState(
+        label: 'Memuat divisi...',
+        color: AppTheme.textSecondary,
+        fontWeight: FontWeight.w500,
+      );
+    }
+
+    // 4) Selesai — data ada atau tidak ditemukan
+    final data = snapshot.data?.trim() ?? '';
+    if (data.isEmpty) {
+      return const _DivisionDisplayState(
+        label: 'Divisi tidak ditemukan',
+        color: AppTheme.textSecondary,
+        fontWeight: FontWeight.w500,
+      );
+    }
+
+    return _DivisionDisplayState(
+      label: data,
+      color: AppTheme.textPrimary,
+      fontWeight: FontWeight.w600,
+    );
+  }
+
+  // =========================================================
+  // ERROR MESSAGE
+  // =========================================================
 
   String _errorMessage(Object? error) {
     if (error is FirebaseException) {
@@ -90,4 +139,20 @@ class _DivisionNameTextState extends State<DivisionNameText> {
     }
     return 'Gagal memuat divisi';
   }
+}
+
+// =========================================================
+// VALUE OBJECT
+// =========================================================
+
+class _DivisionDisplayState {
+  final String label;
+  final Color color;
+  final FontWeight fontWeight;
+
+  const _DivisionDisplayState({
+    required this.label,
+    required this.color,
+    required this.fontWeight,
+  });
 }

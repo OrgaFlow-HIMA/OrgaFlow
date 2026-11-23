@@ -26,7 +26,7 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   // ===== Layout Constants =====
-  static const double _fieldRadius = 14;
+  static const double _fieldRadius = 12;
   static const double _gapBetweenFields = 18;
 
   static const Color _borderColor = Color(0xFFE0E0E0);
@@ -360,7 +360,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             Text(
               'Kembali',
               style: TextStyle(
-                fontSize: 15,
+                fontSize: 14,
                 fontWeight: FontWeight.w500,
                 color: Colors.white,
               ),
@@ -391,11 +391,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          padding: const EdgeInsets.only(left: 4, bottom: 6),
           child: Text(
             label,
             style: const TextStyle(
-              fontSize: 14,
+              fontSize: 13, // ← sebelumnya 14
               fontWeight: FontWeight.w600,
               color: AppTheme.textPrimary,
             ),
@@ -410,15 +410,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
           textInputAction: textInputAction,
           enabled: !_isLoading,
           onFieldSubmitted: (_) => onSubmitted?.call(),
-          style: const TextStyle(fontSize: 15, color: AppTheme.textPrimary),
+          style: const TextStyle(
+            fontSize: 13, // ← sebelumnya 15
+            color: AppTheme.textPrimary,
+          ),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(color: _hintColor, fontSize: 14),
+            hintStyle: const TextStyle(
+              color: _hintColor,
+              fontSize: 13, // ← sebelumnya 14
+            ),
+            isDense: true, // ← baru: tinggi field lebih ramping
             filled: true,
             fillColor: Colors.white,
             contentPadding: const EdgeInsets.symmetric(
-              horizontal: 18,
-              vertical: 18,
+              horizontal: 14, // ← sebelumnya 18
+              vertical: 16, // ← sebelumnya 18
             ),
             suffixIcon: suffixIcon,
             border: OutlineInputBorder(
@@ -433,7 +440,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               borderRadius: BorderRadius.circular(_fieldRadius),
               borderSide: const BorderSide(
                 color: AppTheme.primaryBlue,
-                width: 1.5,
+                width: 1.4,
               ),
             ),
             errorBorder: OutlineInputBorder(
@@ -444,9 +451,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
             focusedErrorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(_fieldRadius),
-              borderSide: const BorderSide(color: AppTheme.error, width: 1.5),
+              borderSide: const BorderSide(color: AppTheme.error, width: 1.4),
             ),
-            errorStyle: const TextStyle(fontSize: 12),
+            errorStyle: const TextStyle(fontSize: 11),
           ),
         ),
       ],
@@ -467,11 +474,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          padding: const EdgeInsets.only(left: 4, bottom: 6),
           child: Text(
             label,
             style: const TextStyle(
-              fontSize: 14,
+              fontSize: 13, // ← sebelumnya 14
               fontWeight: FontWeight.w600,
               color: AppTheme.textPrimary,
             ),
@@ -480,17 +487,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
         DropdownButtonFormField<T>(
           value: value,
           isExpanded: true,
+          isDense: true, // ← baru: lebih ramping
           icon: const Icon(
             Icons.keyboard_arrow_down_rounded,
             color: _hintColor,
+            size: 20,
           ),
-          style: const TextStyle(fontSize: 15, color: AppTheme.textPrimary),
+          style: const TextStyle(
+            fontSize: 13, // ← sebelumnya 15
+            color: AppTheme.textPrimary,
+          ),
           decoration: InputDecoration(
             filled: true,
             fillColor: Colors.white,
+            isDense: true, // ← baru
             contentPadding: const EdgeInsets.symmetric(
-              horizontal: 18,
-              vertical: 14,
+              horizontal: 14, // ← sebelumnya 18
+              vertical: 12, // ← sebelumnya 14
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(_fieldRadius),
@@ -504,7 +517,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               borderRadius: BorderRadius.circular(_fieldRadius),
               borderSide: const BorderSide(
                 color: AppTheme.primaryBlue,
-                width: 1.5,
+                width: 1.4,
               ),
             ),
           ),
@@ -1052,7 +1065,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             : const Text(
                 'Daftar Sekarang',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: Colors.white,
                 ),

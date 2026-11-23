@@ -490,16 +490,19 @@ class _AgendaPageState extends State<AgendaPage> {
 
               // Status tag
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: isDanger ? AppTheme.errorBg : AppTheme.lightBlue,
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(50),
                 ),
                 child: Text(
                   agenda.statusTag,
                   style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
                     color: isDanger ? AppTheme.error : AppTheme.primaryBlue,
                   ),
                 ),

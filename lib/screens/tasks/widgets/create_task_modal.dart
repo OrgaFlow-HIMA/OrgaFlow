@@ -353,17 +353,11 @@ class _CreateTaskModalState extends State<CreateTaskModal> {
                                 : Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: const [
-                                      Icon(
-                                        Icons.send_rounded,
-                                        color: Colors.white,
-                                        size: 16,
-                                      ),
-                                      SizedBox(width: 6),
                                       Text(
                                         'Publikasikan Tugas',
                                         style: TextStyle(
                                           fontSize: 14,
-                                          fontWeight: FontWeight.w700,
+                                          fontWeight: FontWeight.w600,
                                           color: Colors.white,
                                         ),
                                       ),

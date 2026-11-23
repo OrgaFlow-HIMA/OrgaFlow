@@ -446,14 +446,6 @@ class _AddEditAgendaModalState extends State<AddEditAgendaModal> {
                                 : Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(
-                                        _isEdit
-                                            ? Icons.save_rounded
-                                            : Icons.send_rounded,
-                                        color: Colors.white,
-                                        size: 16,
-                                      ),
-                                      const SizedBox(width: 6),
                                       Text(
                                         _isEdit
                                             ? 'Simpan Perubahan'

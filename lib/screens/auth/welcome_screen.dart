@@ -112,7 +112,7 @@ class WelcomeScreen extends StatelessWidget {
                           child: const Text(
                             'Mulai Sekarang',
                             style: TextStyle(
-                              fontSize: 16,
+                              fontSize: 14,
                               fontWeight: FontWeight.w600,
                             ),
                           ),

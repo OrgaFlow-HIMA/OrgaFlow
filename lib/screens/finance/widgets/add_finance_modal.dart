@@ -32,11 +32,9 @@ class _AddFinanceModalState extends State<AddFinanceModal> {
   final _judulController = TextEditingController();
   final _deskripsiController = TextEditingController();
   final _nominalController = TextEditingController();
-
   final _nomorRekeningController = TextEditingController(
     text: 'BCA 1234567890 a.n HIMA TI',
   );
-
   final _qrisUrlController = TextEditingController();
 
   String _jenis = 'masuk';
@@ -47,9 +45,22 @@ class _AddFinanceModalState extends State<AddFinanceModal> {
 
   DateTime? _tenggatWaktu;
 
-  // ---------------------------------------------------------------------------
-  // Lifecycle
-  // ---------------------------------------------------------------------------
+  // ===== Style seragam =====
+  static const TextStyle _inputTextStyle = TextStyle(
+    fontSize: 13,
+    color: AppTheme.textPrimary,
+    fontWeight: FontWeight.w500,
+  );
+  static const TextStyle _hintStyle = TextStyle(
+    fontSize: 13,
+    color: AppTheme.textSecondary,
+    fontWeight: FontWeight.w400,
+  );
+  static const TextStyle _labelStyle = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w700,
+    color: AppTheme.textPrimary,
+  );
 
   @override
   void dispose() {
@@ -58,29 +69,42 @@ class _AddFinanceModalState extends State<AddFinanceModal> {
     _nominalController.dispose();
     _nomorRekeningController.dispose();
     _qrisUrlController.dispose();
-
     super.dispose();
   }
 
-  // ---------------------------------------------------------------------------
-  // Helpers
-  // ---------------------------------------------------------------------------
+  // ============ HELPERS ============
 
   InputDecoration _inputDecoration({
-    required String label,
-    String? hint,
-    Widget? prefixIcon,
+    required String hint,
+    IconData? icon,
+    String? prefixText,
   }) {
     return InputDecoration(
-      labelText: label,
       hintText: hint,
-      prefixIcon: prefixIcon,
+      hintStyle: _hintStyle,
+      prefixText: prefixText,
+      prefixStyle: const TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w700,
+        color: AppTheme.textPrimary,
+      ),
+      prefixIcon: icon != null
+          ? Icon(icon, size: 20, color: AppTheme.primaryBlue)
+          : null,
+      // HAPUS prefixIconConstraints agar Flutter menggunakan ukuran default (48px)
       filled: true,
       fillColor: AppTheme.background,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      isDense: false,
+      // KUNCI UTAMA: contentPadding kiri 0 agar teks nempel ke kotak ikon
+      contentPadding: const EdgeInsets.only(
+        left: 0, // Teks menempel ke batas kanan ikon
+        right: 16,
+        top: 16,
+        bottom: 16,
+      ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
+        borderSide: const BorderSide(color: AppTheme.borderLight),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -88,7 +112,7 @@ class _AddFinanceModalState extends State<AddFinanceModal> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 1.5),
+        borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 1.4),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -96,8 +120,9 @@ class _AddFinanceModalState extends State<AddFinanceModal> {
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppTheme.error, width: 1.5),
+        borderSide: const BorderSide(color: AppTheme.error, width: 1.4),
       ),
+      errorStyle: const TextStyle(fontSize: 11),
     );
   }
 
@@ -106,37 +131,32 @@ class _AddFinanceModalState extends State<AddFinanceModal> {
       SnackBar(
         content: Text(message),
         backgroundColor: isError ? AppTheme.error : AppTheme.success,
-        behavior: SnackBarBehavior.floating,
       ),
     );
   }
 
   String _formatDate(DateTime date) {
     const months = [
-      'Januari',
-      'Februari',
-      'Maret',
-      'April',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
       'Mei',
-      'Juni',
-      'Juli',
-      'Agustus',
-      'September',
-      'Oktober',
-      'November',
-      'Desember',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
     ];
-
     return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
-  // ---------------------------------------------------------------------------
-  // Date Picker
-  // ---------------------------------------------------------------------------
+  // ============ DATE PICKER ============
 
   Future<void> _pickDate() async {
     final now = DateTime.now();
-
     final picked = await showDatePicker(
       context: context,
       initialDate: _tenggatWaktu ?? now.add(const Duration(days: 14)),
@@ -149,18 +169,13 @@ class _AddFinanceModalState extends State<AddFinanceModal> {
 
     if (!mounted || picked == null) return;
 
-    setState(() {
-      _tenggatWaktu = picked;
-    });
+    setState(() => _tenggatWaktu = picked);
   }
 
-  // ---------------------------------------------------------------------------
-  // Form Submission
-  // ---------------------------------------------------------------------------
+  // ============ SUBMIT ============
 
   Future<void> _submit() async {
     if (_isLoading) return;
-
     FocusScope.of(context).unfocus();
 
     if (!_formKey.currentState!.validate()) return;
@@ -176,10 +191,7 @@ class _AddFinanceModalState extends State<AddFinanceModal> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
-
+    setState(() => _isLoading = true);
     final service = widget.financeService ?? FinanceService();
 
     try {
@@ -198,69 +210,66 @@ class _AddFinanceModalState extends State<AddFinanceModal> {
       );
 
       if (!mounted) return;
-
       final messenger = ScaffoldMessenger.of(context);
-
       Navigator.pop(context);
-
       messenger.showSnackBar(
         const SnackBar(
           content: Text('Data kas berhasil disimpan.'),
           backgroundColor: AppTheme.success,
-          behavior: SnackBarBehavior.floating,
         ),
       );
     } catch (e, stackTrace) {
       debugPrint('GAGAL MENYIMPAN DATA KAS: $e');
       debugPrintStack(stackTrace: stackTrace);
-
       if (!mounted) return;
-
       _showMessage('Gagal menyimpan: $e', isError: true);
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // UI Components
-  // ---------------------------------------------------------------------------
+  // ============ UI COMPONENTS ============
 
   Widget _buildHeader() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        Center(
-          child: Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade300,
-              borderRadius: BorderRadius.circular(10),
-            ),
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: AppTheme.lightBlue,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(
+            Icons.account_balance_wallet_outlined,
+            color: AppTheme.primaryBlue,
+            size: 22,
           ),
         ),
-        const SizedBox(height: 24),
-        const Text(
-          'Buat Data Kas',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: AppTheme.textPrimary,
+        const SizedBox(width: 12),
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Buat Data Kas',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              SizedBox(height: 2),
+              Text(
+                'Tagihan anggota atau catatan transaksi',
+                style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 6),
-        const Text(
-          'Tambahkan tagihan anggota atau catat transaksi kas organisasi.',
-          style: TextStyle(
-            fontSize: 13,
-            height: 1.5,
-            color: AppTheme.textSecondary,
-          ),
+        IconButton(
+          icon: const Icon(Icons.close_rounded, color: AppTheme.textSecondary),
+          onPressed: () => Navigator.of(context).pop(),
         ),
       ],
     );
@@ -270,19 +279,16 @@ class _AddFinanceModalState extends State<AddFinanceModal> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.textPrimary,
-          ),
-        ),
+        Text(title, style: _labelStyle),
         if (subtitle != null) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
             subtitle,
-            style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppTheme.textSecondary,
+              height: 1.4,
+            ),
           ),
         ],
       ],
@@ -294,37 +300,95 @@ class _AddFinanceModalState extends State<AddFinanceModal> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionTitle('Jenis pencatatan'),
-        const SizedBox(height: 10),
-        SizedBox(
-          width: double.infinity,
-          child: SegmentedButton<bool>(
-            showSelectedIcon: false,
-            segments: const [
-              ButtonSegment<bool>(
-                value: true,
-                label: Text('Tagihan Anggota', textAlign: TextAlign.center),
-                icon: Icon(Icons.people_alt_outlined),
+        const SizedBox(height: 8),
+        Container(
+          height: 44,
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: AppTheme.lightBlue.withOpacity(0.5),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppTheme.borderLight),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildTypeChip(
+                  label: 'Tagihan Anggota',
+                  icon: Icons.people_alt_outlined,
+                  selected: _isTagihanAnggota,
+                  onTap: () => setState(() {
+                    _isTagihanAnggota = true;
+                    _jenis = 'masuk';
+                    _kategori = 'iuran';
+                  }),
+                ),
               ),
-              ButtonSegment<bool>(
-                value: false,
-                label: Text('Laporan Kas', textAlign: TextAlign.center),
-                icon: Icon(Icons.receipt_long_outlined),
+              const SizedBox(width: 4),
+              Expanded(
+                child: _buildTypeChip(
+                  label: 'Laporan Kas',
+                  icon: Icons.receipt_long_outlined,
+                  selected: !_isTagihanAnggota,
+                  onTap: () => setState(() => _isTagihanAnggota = false),
+                ),
               ),
             ],
-            selected: {_isTagihanAnggota},
-            onSelectionChanged: (value) {
-              setState(() {
-                _isTagihanAnggota = value.first;
-
-                if (_isTagihanAnggota) {
-                  _jenis = 'masuk';
-                  _kategori = 'iuran';
-                }
-              });
-            },
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildTypeChip({
+    required String label,
+    required IconData icon,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        decoration: BoxDecoration(
+          color: selected ? AppTheme.primaryBlue : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: AppTheme.primaryBlue.withOpacity(0.25),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : null,
+        ),
+        child: Center(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 14,
+                color: selected ? Colors.white : AppTheme.textSecondary,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: selected ? Colors.white : AppTheme.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -333,29 +397,35 @@ class _AddFinanceModalState extends State<AddFinanceModal> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionTitle('Jenis transaksi'),
-        const SizedBox(height: 10),
-        SizedBox(
-          width: double.infinity,
-          child: SegmentedButton<String>(
-            showSelectedIcon: false,
-            segments: const [
-              ButtonSegment<String>(
-                value: 'masuk',
-                label: Text('Pemasukan'),
-                icon: Icon(Icons.south_west_rounded),
+        const SizedBox(height: 8),
+        Container(
+          height: 44,
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: AppTheme.lightBlue.withOpacity(0.5),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppTheme.borderLight),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildTypeChip(
+                  label: 'Pemasukan',
+                  icon: Icons.south_west_rounded,
+                  selected: _jenis == 'masuk',
+                  onTap: () => setState(() => _jenis = 'masuk'),
+                ),
               ),
-              ButtonSegment<String>(
-                value: 'keluar',
-                label: Text('Pengeluaran'),
-                icon: Icon(Icons.north_east_rounded),
+              const SizedBox(width: 4),
+              Expanded(
+                child: _buildTypeChip(
+                  label: 'Pengeluaran',
+                  icon: Icons.north_east_rounded,
+                  selected: _jenis == 'keluar',
+                  onTap: () => setState(() => _jenis = 'keluar'),
+                ),
               ),
             ],
-            selected: {_jenis},
-            onSelectionChanged: (value) {
-              setState(() {
-                _jenis = value.first;
-              });
-            },
           ),
         ),
       ],
@@ -363,24 +433,39 @@ class _AddFinanceModalState extends State<AddFinanceModal> {
   }
 
   Widget _buildCategoryField() {
-    return DropdownButtonFormField<String>(
-      value: _kategori,
-      decoration: _inputDecoration(
-        label: 'Kategori transaksi',
-        prefixIcon: const Icon(Icons.category_outlined),
-      ),
-      items: const [
-        DropdownMenuItem(value: 'iuran', child: Text('Iuran')),
-        DropdownMenuItem(value: 'operasional', child: Text('Operasional')),
-        DropdownMenuItem(value: 'kegiatan', child: Text('Kegiatan')),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Kategori transaksi', style: _labelStyle),
+        const SizedBox(height: 6),
+        DropdownButtonFormField<String>(
+          value: _kategori,
+          isExpanded: true,
+          isDense: false,
+          itemHeight: null,
+          style: _inputTextStyle,
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: AppTheme.textSecondary,
+            size: 20,
+          ),
+          decoration: _inputDecoration(hint: 'Pilih kategori').copyWith(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 4,
+            ),
+          ),
+          items: const [
+            DropdownMenuItem(value: 'iuran', child: Text('Iuran')),
+            DropdownMenuItem(value: 'operasional', child: Text('Operasional')),
+            DropdownMenuItem(value: 'kegiatan', child: Text('Kegiatan')),
+          ],
+          onChanged: (value) {
+            if (value == null) return;
+            setState(() => _kategori = value);
+          },
+        ),
       ],
-      onChanged: (value) {
-        if (value == null) return;
-
-        setState(() {
-          _kategori = value;
-        });
-      },
     );
   }
 
@@ -393,58 +478,97 @@ class _AddFinanceModalState extends State<AddFinanceModal> {
           subtitle: 'Lengkapi informasi utama pencatatan kas.',
         ),
         const SizedBox(height: 14),
+
+        // --- Judul ---
         TextFormField(
           controller: _judulController,
           textCapitalization: TextCapitalization.sentences,
+          style: _inputTextStyle,
           decoration: _inputDecoration(
-            label: _isTagihanAnggota ? 'Nama tagihan kas' : 'Judul transaksi',
-            hint: _isTagihanAnggota
-                ? 'Contoh: Kas Bulan November 2026'
-                : 'Contoh: Pembelian perlengkapan',
-            prefixIcon: const Icon(Icons.edit_note_rounded),
+            hint: _isTagihanAnggota ? 'Nama tagihan kas' : 'Judul transaksi',
+            icon: Icons.edit_note_rounded,
           ),
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
               return 'Judul wajib diisi.';
             }
-
             return null;
           },
         ),
         const SizedBox(height: 12),
+
+        // --- Nominal ---
         TextFormField(
           controller: _nominalController,
           keyboardType: TextInputType.number,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          style: _inputTextStyle,
           decoration: _inputDecoration(
-            label: _isTagihanAnggota ? 'Nominal per anggota' : 'Total nominal',
-            hint: 'Contoh: 20000',
-            prefixIcon: const Icon(Icons.payments_outlined),
-          ).copyWith(prefixText: 'Rp '),
+            hint: _isTagihanAnggota ? 'Nominal per anggota' : 'Total nominal',
+            icon: Icons.payments_outlined,
+            prefixText: 'Rp ',
+          ),
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
               return 'Nominal wajib diisi.';
             }
-
             final amount = int.tryParse(value);
-
             if (amount == null || amount <= 0) {
               return 'Masukkan nominal yang valid.';
             }
-
             return null;
           },
         ),
         const SizedBox(height: 12),
-        TextFormField(
-          controller: _deskripsiController,
-          textCapitalization: TextCapitalization.sentences,
-          maxLines: 3,
-          minLines: 2,
-          decoration: _inputDecoration(
-            label: 'Keterangan',
-            hint: 'Tambahkan catatan atau detail transaksi (opsional).',
-            prefixIcon: const Icon(Icons.notes_rounded),
+
+        // --- Keterangan (MULTILINE) ---
+        Container(
+          decoration: BoxDecoration(
+            color: AppTheme.background,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppTheme.borderLight),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Ikon
+              Padding(
+                // left 12 dan top 15 agar sejajar dengan baris pertama teks
+                padding: const EdgeInsets.only(left: 12, top: 15),
+                child: Icon(
+                  Icons.notes_rounded,
+                  size: 20,
+                  color: AppTheme.primaryBlue,
+                ),
+              ),
+              // TextField
+              Expanded(
+                child: TextFormField(
+                  controller: _deskripsiController,
+                  textCapitalization: TextCapitalization.sentences,
+                  maxLines: 3,
+                  minLines: 2,
+                  style: _inputTextStyle,
+                  decoration: InputDecoration(
+                    hintText: 'Keterangan (opsional)',
+                    hintStyle: _hintStyle,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    errorBorder: InputBorder.none,
+                    focusedErrorBorder: InputBorder.none,
+                    filled: false,
+                    // KUNCI UTAMA: left 10 agar dekat dengan ikon, top 14 agar sejajar
+                    contentPadding: const EdgeInsets.only(
+                      left: 10,
+                      right: 16,
+                      top: 14,
+                      bottom: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -457,41 +581,36 @@ class _AddFinanceModalState extends State<AddFinanceModal> {
       children: [
         _buildSectionTitle(
           'Informasi pembayaran',
-          subtitle: 'Informasi ini akan digunakan sebagai panduan pembayaran anggota.',
+          subtitle: 'Panduan pembayaran untuk anggota.',
         ),
         const SizedBox(height: 14),
         TextFormField(
           controller: _nomorRekeningController,
           textCapitalization: TextCapitalization.sentences,
+          style: _inputTextStyle,
           decoration: _inputDecoration(
-            label: 'Rekening / Bank transfer',
-            hint: 'Contoh: BCA 1234567890 a.n HIMA TI',
-            prefixIcon: const Icon(Icons.account_balance_outlined),
+            hint: 'Rekening / Bank transfer',
+            icon: Icons.account_balance_outlined,
           ),
         ),
         const SizedBox(height: 12),
         TextFormField(
           controller: _qrisUrlController,
           keyboardType: TextInputType.url,
+          style: _inputTextStyle,
           decoration: _inputDecoration(
-            label: 'URL gambar QRIS',
-            hint: 'https://example.com/qris.png',
-            prefixIcon: const Icon(Icons.qr_code_rounded),
+            hint: 'URL gambar QRIS (opsional)',
+            icon: Icons.qr_code_rounded,
           ),
           validator: (value) {
-            if (value == null || value.trim().isEmpty) {
-              return null;
-            }
-
+            if (value == null || value.trim().isEmpty) return null;
             final uri = Uri.tryParse(value.trim());
-
             if (uri == null ||
                 !uri.hasScheme ||
                 (uri.scheme != 'http' && uri.scheme != 'https') ||
                 uri.host.isEmpty) {
               return 'Masukkan URL gambar yang valid.';
             }
-
             return null;
           },
         ),
@@ -503,59 +622,82 @@ class _AddFinanceModalState extends State<AddFinanceModal> {
 
   Widget _buildDeadlinePicker() {
     final hasDate = _tenggatWaktu != null;
-
-    return InkWell(
-      onTap: _isLoading ? null : _pickDate,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-        decoration: BoxDecoration(
-          color: AppTheme.background,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppTheme.borderLight),
-        ),
-        child: Row(
-          children: [
-            const Icon(
-              Icons.calendar_month_outlined,
-              color: AppTheme.primaryBlue,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Tenggat pembayaran',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    hasDate
-                        ? _formatDate(_tenggatWaktu!)
-                        : 'Pilih tanggal pembayaran',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: hasDate ? FontWeight.w600 : FontWeight.w400,
-                      color: hasDate
-                          ? AppTheme.textPrimary
-                          : AppTheme.textSecondary,
-                    ),
-                  ),
-                ],
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _isLoading ? null : _pickDate,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppTheme.background,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppTheme.borderLight),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppTheme.lightBlue,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.calendar_today_rounded,
+                  size: 18,
+                  color: AppTheme.primaryBlue,
+                ),
               ),
-            ),
-            Icon(
-              hasDate
-                  ? Icons.edit_calendar_outlined
-                  : Icons.chevron_right_rounded,
-              color: AppTheme.textSecondary,
-            ),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Tenggat pembayaran',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      hasDate
+                          ? _formatDate(_tenggatWaktu!)
+                          : 'Belum ditentukan',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryBlue,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'Atur',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -564,93 +706,90 @@ class _AddFinanceModalState extends State<AddFinanceModal> {
   Widget _buildSubmitButton() {
     return SizedBox(
       width: double.infinity,
-      child: FilledButton(
+      height: 50,
+      child: FilledButton.icon(
         onPressed: _isLoading ? null : _submit,
+        label: Text(
+          _isLoading ? 'Menyimpan...' : 'Simpan Data Kas',
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        ),
         style: FilledButton.styleFrom(
           backgroundColor: AppTheme.primaryBlue,
-          disabledBackgroundColor: AppTheme.primaryBlue.withValues(alpha: 0.5),
-          minimumSize: const Size.fromHeight(52),
+          foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(50),
           ),
         ),
-        child: _isLoading
-            ? const SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2,
-                ),
-              )
-            : const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.save_outlined, size: 18),
-                  SizedBox(width: 8),
-                  Text(
-                    'Simpan Data Kas',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
       ),
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Main Build
-  // ---------------------------------------------------------------------------
+  // ============ BUILD ============
 
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
 
-    return AnimatedPadding(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOut,
+    return Padding(
       padding: EdgeInsets.only(bottom: mediaQuery.viewInsets.bottom),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: mediaQuery.size.height * 0.9),
-        child: Container(
-          decoration: const BoxDecoration(
-            color: AppTheme.surface,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: SingleChildScrollView(
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildHeader(),
-                  const SizedBox(height: 24),
+      child: SafeArea(
+        top: false,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: mediaQuery.size.height * 0.9),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: AppTheme.surface,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              child: Form(
+                key: _formKey,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Grabber
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
 
-                  _buildEntryType(),
-
-                  if (!_isTagihanAnggota) ...[
+                    _buildHeader(),
                     const SizedBox(height: 20),
-                    _buildTransactionType(),
-                    const SizedBox(height: 16),
-                    _buildCategoryField(),
-                  ],
 
-                  const SizedBox(height: 24),
-                  _buildBasicInformation(),
+                    _buildEntryType(),
 
-                  if (_isTagihanAnggota) ...[
+                    if (!_isTagihanAnggota) ...[
+                      const SizedBox(height: 16),
+                      _buildTransactionType(),
+                      const SizedBox(height: 14),
+                      _buildCategoryField(),
+                    ],
+
+                    const SizedBox(height: 20),
+                    _buildBasicInformation(),
+
+                    if (_isTagihanAnggota) ...[
+                      const SizedBox(height: 20),
+                      const Divider(height: 1, color: AppTheme.borderLight),
+                      const SizedBox(height: 18),
+                      _buildPaymentInformation(),
+                    ],
+
                     const SizedBox(height: 24),
-                    const Divider(color: AppTheme.borderLight),
-                    const SizedBox(height: 20),
-                    _buildPaymentInformation(),
+                    _buildSubmitButton(),
                   ],
-
-                  const SizedBox(height: 28),
-                  _buildSubmitButton(),
-                ],
+                ),
               ),
             ),
           ),

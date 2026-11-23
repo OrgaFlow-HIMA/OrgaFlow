@@ -474,7 +474,7 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: AppTheme.textPrimary,
-              fontSize: 26,
+              fontSize: 24,
               fontWeight: FontWeight.w700,
               letterSpacing: -0.6,
             ),

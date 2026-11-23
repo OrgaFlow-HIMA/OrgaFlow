@@ -241,18 +241,14 @@ class ActiveNavPainter extends CustomPainter {
     const bumpWidthExtra = 16.0;
 
     final bumpWidth = circleRadius + bumpWidthExtra;
-
-    // Posisi awal dan akhir tonjolan.
     final leftBump = centerX - bumpWidth;
     final rightBump = centerX + bumpWidth;
 
     final path = Path();
 
-    // Sisi kiri atas.
+    // --- Membentuk badan navbar ---
     path.moveTo(0, bumpHeight);
     path.lineTo(leftBump, bumpHeight);
-
-    // Lengkungan naik.
     path.cubicTo(
       leftBump + bumpWidth * 0.45,
       bumpHeight,
@@ -261,8 +257,6 @@ class ActiveNavPainter extends CustomPainter {
       centerX,
       0,
     );
-
-    // Lengkungan turun.
     path.cubicTo(
       centerX + circleRadius * 1.1,
       0,
@@ -271,24 +265,50 @@ class ActiveNavPainter extends CustomPainter {
       rightBump,
       bumpHeight,
     );
-
-    // Sisi kanan atas.
     path.lineTo(size.width, bumpHeight);
-
-    // Sisi kanan dan bawah.
     path.lineTo(size.width, size.height);
     path.lineTo(0, size.height);
     path.close();
 
-    final paint = Paint()
-      ..color = AppTheme.surface
+    // ======================================================
+    // EFEK SHADOW HALUS UNTUK BADAN NAVBAR PUTIH
+    // ======================================================
+
+    // 1. Shadow Utama (lebih tebal di bawah)
+    final shadowPaint1 = Paint()
+      ..color = Colors.black
+          .withOpacity(0.06) // Warna bayangan
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 16); // Blur 16px
+
+    canvas.save();
+    canvas.translate(
+      0,
+      -4,
+    ); // Geser sedikit ke atas agar bayangan jatuh ke bawah
+    canvas.drawPath(path, shadowPaint1);
+    canvas.restore();
+
+    // 2. Shadow Ambient (lebih tipis dan menyebar ke atas/samping)
+    final shadowPaint2 = Paint()
+      ..color = Colors.black.withOpacity(0.03)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+
+    canvas.save();
+    canvas.translate(0, -2);
+    canvas.drawPath(path, shadowPaint2);
+    canvas.restore();
+
+    // ======================================================
+    // WARNA DASAR NAVBAR (DI ATAS SHADOW)
+    // ======================================================
+
+    final bodyPaint = Paint()
+      ..color = AppTheme
+          .surface // Warna putih solid
       ..style = PaintingStyle.fill
       ..isAntiAlias = true;
 
-    // Shadow mengikuti bentuk navbar.
-    canvas.drawShadow(path, Colors.black.withOpacity(0.08), 12, false);
-
-    canvas.drawPath(path, paint);
+    canvas.drawPath(path, bodyPaint);
   }
 
   @override

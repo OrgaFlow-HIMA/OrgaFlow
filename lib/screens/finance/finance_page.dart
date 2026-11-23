@@ -26,10 +26,9 @@ class FinancePage extends StatefulWidget {
   State<FinancePage> createState() => _FinancePageState();
 }
 
-class _FinancePageState extends State<FinancePage>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _FinancePageState extends State<FinancePage> {
   late final FinanceService _service;
+  int _selectedTab = 0; // 0: Tagihan Kas, 1: Buku Kas
   String _currentUid = '';
   String _currentNama = '';
   bool _isGeneratingPdf = false;
@@ -39,8 +38,6 @@ class _FinancePageState extends State<FinancePage>
       widget.userRole == UserRole.ketua ||
       widget.userRole == UserRole.wakilKetua;
 
-  /// Role yang berhak mencetak laporan PDF keuangan:
-  /// Ketua, Wakil Ketua, Bendahara, dan Dekan (Dosen)
   bool get _canExportPdf =>
       widget.userRole == UserRole.ketua ||
       widget.userRole == UserRole.wakilKetua ||
@@ -51,24 +48,18 @@ class _FinancePageState extends State<FinancePage>
   void initState() {
     super.initState();
     _service = widget.financeService ?? FinanceService();
-    _tabController = TabController(length: 2, vsync: this);
     final user = FirebaseAuth.instance.currentUser;
     _currentUid = user?.uid ?? 'anon';
     _currentNama =
         widget.userName ?? user?.displayName ?? widget.userRole.label;
   }
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
   String _formatRupiah(int number) {
-    return 'Rp ${number.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
+    return 'Rp${number.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
   }
 
-  /// Menampilkan pilihan periode sebelum generate PDF
+  // ============ PDF EXPORT ============
+
   void _showExportPdfOptions(List<FinanceTransaction> allTransactions) {
     showModalBottomSheet(
       context: context,
@@ -110,8 +101,8 @@ class _FinancePageState extends State<FinancePage>
                 const Text(
                   'Cetak Laporan Keuangan (PDF)',
                   style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
                     color: AppTheme.textPrimary,
                   ),
                 ),
@@ -203,7 +194,7 @@ class _FinancePageState extends State<FinancePage>
                   Text(
                     title,
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: AppTheme.textPrimary,
                     ),
@@ -212,7 +203,7 @@ class _FinancePageState extends State<FinancePage>
                   Text(
                     subtitle,
                     style: const TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
                       color: AppTheme.textSecondary,
                     ),
                   ),
@@ -259,127 +250,471 @@ class _FinancePageState extends State<FinancePage>
     }
   }
 
+  // ============ BUILD ============
+
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      top: true,
-      bottom: false,
-      child: Container(
-        color: AppTheme.background,
-        child: StreamBuilder<List<FinanceTransaction>>(
-          stream: _service.watchTransactions(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFFDCE7FF),
+            Color(0xFFEDF2FF),
+            AppTheme.background,
+            Colors.white,
+          ],
+          stops: [0.0, 0.25, 0.65, 1.0],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 420,
+            child: IgnorePointer(
+              child: CustomPaint(
+                painter: _FinanceSoftBackgroundPainter(),
+                size: Size.infinite,
+              ),
+            ),
+          ),
 
-            final allTransactions = snapshot.data ?? [];
+          SafeArea(
+            bottom: false,
+            child: StreamBuilder<List<FinanceTransaction>>(
+              stream: _service.watchTransactions(),
+              builder: (context, snapshot) {
+                final allTransactions = snapshot.data ?? [];
 
-            // Hitung saldo dan arus kas realtime.
-            int totalMasuk = 0;
-            int totalKeluar = 0;
+                int totalMasuk = 0;
+                int totalKeluar = 0;
+                for (final tx in allTransactions) {
+                  if (tx.isIncome) {
+                    totalMasuk += tx.nominal;
+                  } else {
+                    totalKeluar += tx.nominal;
+                  }
+                }
+                final saldoAktif = totalMasuk - totalKeluar;
 
-            for (final tx in allTransactions) {
-              if (tx.isIncome) {
-                totalMasuk += tx.nominal;
-              } else {
-                totalKeluar += tx.nominal;
-              }
-            }
+                final tagihanKas = allTransactions
+                    .where((tx) => tx.isTagihanAnggota)
+                    .toList();
+                final arusKas = allTransactions;
 
-            final saldoAktif = totalMasuk - totalKeluar;
+                final isLoading =
+                    snapshot.connectionState == ConnectionState.waiting &&
+                    !snapshot.hasData;
 
-            final tagihanKas = allTransactions
-                .where((tx) => tx.isTagihanAnggota)
-                .toList();
+                final visibleList = _selectedTab == 0 ? tagihanKas : arusKas;
 
-            final arusKas = allTransactions;
-
-            return Stack(
-              children: [
-                NestedScrollView(
-                  headerSliverBuilder: (context, innerBoxIsScrolled) => [
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+                return RefreshIndicator(
+                  onRefresh: () async => await Future<void>.delayed(
+                    const Duration(milliseconds: 300),
+                  ),
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.zero,
+                    children: [
+                      // Bagian atas
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildHeaderGreeting(allTransactions),
-                            const SizedBox(height: 14),
+                            _buildTitleBlock(allTransactions), // ← pass list
+                            const SizedBox(height: 16),
                             _buildSummaryCard(
                               saldoAktif,
                               totalMasuk,
                               totalKeluar,
                             ),
-                            const SizedBox(height: 14),
-                            _buildTabBar(),
+                            const SizedBox(height: 16),
+                            _buildTabSwitcher(
+                              tagihanCount: tagihanKas.length,
+                              arusCount: arusKas.length,
+                            ),
                           ],
                         ),
                       ),
-                    ),
-                  ],
-                  body: TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _buildTagihanKasTab(tagihanKas),
-                      _buildArusKasTab(arusKas),
-                    ],
-                  ),
-                ),
 
-                // Tombol tambah transaksi.
-                if (_isBendahara)
-                  Positioned(
-                    right: 16,
-                    bottom: 24,
-                    child: FloatingActionButton.extended(
-                      onPressed: () => AddFinanceModal.show(
-                        context,
-                        financeService: _service,
-                      ),
-                      backgroundColor: AppTheme.primaryBlue,
-                      icon: const Icon(Icons.add_rounded, color: Colors.white),
-                      label: const Text(
-                        'Buat Kas / Transaksi',
-                        style: TextStyle(
+                      // Panel putih
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.fromLTRB(20, 24, 20, 120),
+                        decoration: const BoxDecoration(
                           color: Colors.white,
-                          fontWeight: FontWeight.bold,
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(28),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildSectionHeader(allTransactions: arusKas),
+                            const SizedBox(height: 16),
+                            if (isLoading)
+                              _buildLoading()
+                            else if (visibleList.isEmpty)
+                              _buildEmptyState()
+                            else
+                              ..._selectedTab == 0
+                                  ? tagihanKas.map(
+                                      (tx) => Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 12,
+                                        ),
+                                        child: _buildTagihanKasCard(tx),
+                                      ),
+                                    )
+                                  : _buildArusKasListItems(arusKas),
+                          ],
                         ),
                       ),
-                    ),
+                    ],
                   ),
-              ],
-            );
-          },
-        ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildHeaderGreeting(List<FinanceTransaction> allTransactions) {
+  // ============ TITLE + ADD BUTTON ============
+
+  Widget _buildTitleBlock(List<FinanceTransaction> allTransactions) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Keuangan & Kas Organisasi',
+                'Keuangan & Kas',
                 style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
                   color: AppTheme.textPrimary,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.6,
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 4),
               Text(
                 _isBendahara
                     ? 'Kelola arus kas & tagihan anggota'
                     : (_isLeader || widget.userRole == UserRole.dekan)
                     ? 'Pantau & unduh laporan buku kas'
                     : 'Cek kewajiban kas & pembayaran Anda',
+                style: const TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (_canExportPdf) ...[
+          const SizedBox(width: 8),
+          _buildPdfButton(allTransactions), // ← pass list
+        ],
+        if (_isBendahara) ...[const SizedBox(width: 8), _buildAddButton()],
+      ],
+    );
+  }
+
+  Widget _buildAddButton() {
+    return GestureDetector(
+      onTap: () => AddFinanceModal.show(context, financeService: _service),
+      child: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: AppTheme.primaryBlue,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.primaryBlue.withOpacity(0.25),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: const Icon(Icons.add_rounded, color: Colors.white, size: 22),
+      ),
+    );
+  }
+
+  Widget _buildPdfButton(List<FinanceTransaction> allTransactions) {
+    return GestureDetector(
+      onTap: _isGeneratingPdf
+          ? null
+          : () => _showExportPdfOptions(allTransactions),
+      child: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.primaryBlue.withOpacity(0.10),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        alignment: Alignment.center,
+        child: _isGeneratingPdf
+            ? const SizedBox(width: 18, height: 18)
+            : const Icon(
+                Icons.picture_as_pdf_rounded,
+                color: AppTheme.primaryBlue,
+                size: 22,
+              ),
+      ),
+    );
+  }
+
+  // ============ SUMMARY CARD ============
+
+  Widget _buildSummaryCard(int saldo, int masuk, int keluar) {
+    const baseColor = Color(0xFF1E3A8A);
+
+    return Container(
+      margin: const EdgeInsets.only(right: 8, bottom: 8),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // ===== FOLDER BELAKANG =====
+          Positioned(
+            top: 18,
+            left: 6,
+            right: 6,
+            bottom: 20,
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color.fromARGB(255, 22, 43, 99),
+                borderRadius: BorderRadius.circular(22),
+              ),
+            ),
+          ),
+
+          // ===== FOLDER UTAMA =====
+          CustomPaint(
+            painter: _FolderCardPainter(color: baseColor),
+            child: Padding(
+              // padding kiri diperkecil → menempel ke tepi lengkungan folder
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ===== Total Saldo =====
+                  const Text(
+                    'Total Saldo Kas',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white70,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  Text(
+                    _formatRupiah(saldo),
+                    style: const TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // ===== Mini Stat =====
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildMiniStat(
+                          icon: Icons.arrow_downward_rounded,
+                          iconColor: const Color(0xFF4ADE80),
+                          label: 'Pemasukan',
+                          value: _formatRupiah(masuk),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildMiniStat(
+                          icon: Icons.arrow_upward_rounded,
+                          iconColor: const Color(0xFFF87171),
+                          label: 'Pengeluaran',
+                          value: _formatRupiah(keluar),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiniStat({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String value,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: iconColor),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(fontSize: 10, color: Colors.white70),
+                ),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============ TAB SWITCHER (sliding) ============
+
+  Widget _buildTabSwitcher({
+    required int tagihanCount,
+    required int arusCount,
+  }) {
+    const labels = ['Tagihan Kas', 'Buku Kas'];
+    final counts = [tagihanCount, arusCount];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final tabWidth = constraints.maxWidth / labels.length;
+
+        return Container(
+          height: 46,
+          decoration: BoxDecoration(
+            color: AppTheme.lightBlue.withOpacity(0.5),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppTheme.borderLight),
+          ),
+          child: Stack(
+            children: [
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutCubic,
+                left: (_selectedTab * tabWidth) + 4,
+                top: 4,
+                bottom: 4,
+                width: tabWidth - 8,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryBlue,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primaryBlue.withOpacity(0.25),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Row(
+                children: List.generate(labels.length, (i) {
+                  final isSelected = _selectedTab == i;
+                  return Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => setState(() => _selectedTab = i),
+                      child: Center(
+                        child: AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 200),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w600,
+                            color: isSelected
+                                ? Colors.white
+                                : AppTheme.textSecondary,
+                          ),
+                          child: Text(
+                            '${labels[i]} (${counts[i]})',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ============ SECTION HEADER ============
+
+  Widget _buildSectionHeader({
+    required List<FinanceTransaction> allTransactions,
+  }) {
+    final isTagihan = _selectedTab == 0;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isTagihan ? 'Tagihan Kas Anggota' : 'Laporan Buku Kas',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                isTagihan
+                    ? 'Daftar kewajiban kas yang harus dibayar'
+                    : 'Riwayat seluruh arus kas organisasi',
                 style: const TextStyle(
                   fontSize: 12,
                   color: AppTheme.textSecondary,
@@ -388,36 +723,29 @@ class _FinancePageState extends State<FinancePage>
             ],
           ),
         ),
-        if (_canExportPdf) ...[
+        if (_canExportPdf && !isTagihan) ...[
           const SizedBox(width: 8),
-          FilledButton.icon(
-            onPressed: _isGeneratingPdf
+          GestureDetector(
+            onTap: _isGeneratingPdf
                 ? null
                 : () => _showExportPdfOptions(allTransactions),
-            icon: _isGeneratingPdf
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Icon(Icons.picture_as_pdf_rounded, size: 16),
-            label: const Text('PDF'),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.primaryBlue,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              textStyle: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Text(
+                  'PDF',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.accentBlue,
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 20,
+                  color: AppTheme.accentBlue,
+                ),
+              ],
             ),
           ),
         ],
@@ -425,20 +753,33 @@ class _FinancePageState extends State<FinancePage>
     );
   }
 
-  Widget _buildSummaryCard(int saldo, int masuk, int keluar) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppTheme.primaryBlue, Color(0xFF1E3A8A)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+  Widget _buildLoading() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 30),
+      child: Center(
+        child: SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(strokeWidth: 2.5),
         ),
-        borderRadius: BorderRadius.circular(16),
+      ),
+    );
+  }
+
+  // ============ TAGIHAN KAS CARD ============
+
+  Widget _buildTagihanKasCard(FinanceTransaction tx) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: AppTheme.borderLight),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryBlue.withValues(alpha: 0.25),
-            blurRadius: 10,
+            color: AppTheme.primaryBlue.withOpacity(0.035),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
@@ -446,190 +787,24 @@ class _FinancePageState extends State<FinancePage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Total Saldo Kas HIMA TI',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.white70,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            _formatRupiah(saldo),
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 14),
+          // ===== JUDUL + NOMINAL =====
           Row(
-            children: [
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.arrow_downward_rounded,
-                        size: 16,
-                        color: Color(0xFF4ADE80),
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Pemasukan',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Colors.white70,
-                              ),
-                            ),
-                            Text(
-                              _formatRupiah(masuk),
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.arrow_upward_rounded,
-                        size: 16,
-                        color: Color(0xFFF87171),
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Pengeluaran',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Colors.white70,
-                              ),
-                            ),
-                            Text(
-                              _formatRupiah(keluar),
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTabBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppTheme.borderLight),
-      ),
-      child: TabBar(
-        controller: _tabController,
-        labelColor: AppTheme.primaryBlue,
-        unselectedLabelColor: AppTheme.textSecondary,
-        indicatorColor: AppTheme.primaryBlue,
-        labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-        tabs: const [
-          Tab(text: 'Tagihan Kas Anggota'),
-          Tab(text: 'Laporan Buku Kas'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTagihanKasTab(List<FinanceTransaction> list) {
-    if (list.isEmpty) {
-      return const Center(
-        child: Text(
-          'Belum ada tagihan kas yang dibuat.',
-          style: TextStyle(color: AppTheme.textSecondary),
-        ),
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: list.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        final tx = list[index];
-        return _buildTagihanKasCard(tx);
-      },
-    );
-  }
-
-  Widget _buildTagihanKasCard(FinanceTransaction tx) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.borderLight),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Text(
                   tx.judul,
                   style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
                     color: AppTheme.textPrimary,
+                    height: 1.3,
                   ),
                 ),
               ),
+              const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: AppTheme.lightBlue,
                   borderRadius: BorderRadius.circular(6),
@@ -637,8 +812,8 @@ class _FinancePageState extends State<FinancePage>
                 child: Text(
                   _formatRupiah(tx.nominal),
                   style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
                     color: AppTheme.primaryBlue,
                   ),
                 ),
@@ -649,14 +824,17 @@ class _FinancePageState extends State<FinancePage>
             const SizedBox(height: 6),
             Text(
               tx.deskripsi,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 12,
+                fontSize: 11,
                 color: AppTheme.textSecondary,
+                height: 1.4,
               ),
             ),
           ],
           if (tx.tenggatWaktu != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Row(
               children: [
                 const Icon(
@@ -675,33 +853,62 @@ class _FinancePageState extends State<FinancePage>
               ],
             ),
           ],
+
+          // ===== TOMBOL AKSI =====
           const SizedBox(height: 12),
-          // Role-specific action
+
           if (_isBendahara)
             Row(
               children: [
+                // ----- Tombol Verifikasi (primary blue solid) -----
                 Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => VerifyPaymentsModal.show(
-                      context,
-                      transaction: tx,
-                      financeService: _service,
-                    ),
-                    icon: const Icon(Icons.checklist_rtl_rounded, size: 18),
-                    label: const Text('Verifikasi Pembayar'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppTheme.primaryBlue,
-                      side: const BorderSide(color: AppTheme.primaryBlue),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                  child: SizedBox(
+                    height: 38,
+                    child: FilledButton.icon(
+                      onPressed: () => VerifyPaymentsModal.show(
+                        context,
+                        transaction: tx,
+                        financeService: _service,
+                      ),
+                      label: const Text('Verifikasi'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppTheme.primaryBlue,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: const StadiumBorder(),
+                        textStyle: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                IconButton(
-                  onPressed: () => _confirmDelete(tx.id),
-                  icon: const Icon(Icons.delete_outline, color: AppTheme.error),
+
+                // ----- Tombol Hapus (outline merah) -----
+                SizedBox(
+                  width: 38,
+                  height: 38,
+                  child: OutlinedButton(
+                    onPressed: () => _confirmDelete(tx.id),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.error,
+                      side: BorderSide(
+                        color: AppTheme.error.withOpacity(0.4),
+                        width: 1.2,
+                      ),
+                      padding: EdgeInsets.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      shape: const StadiumBorder(),
+                    ),
+                    child: const Icon(
+                      Icons.delete_outline,
+                      size: 17,
+                      color: AppTheme.error,
+                    ),
+                  ),
                 ),
               ],
             )
@@ -726,7 +933,7 @@ class _FinancePageState extends State<FinancePage>
                             : isMenunggu
                             ? AppTheme.warningBg
                             : Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         isLunas
@@ -735,8 +942,8 @@ class _FinancePageState extends State<FinancePage>
                             ? 'MENUNGGU VERIFIKASI'
                             : 'BELUM DIBAYAR',
                         style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
                           color: isLunas
                               ? AppTheme.success
                               : isMenunggu
@@ -746,23 +953,35 @@ class _FinancePageState extends State<FinancePage>
                       ),
                     ),
                     const Spacer(),
-                    FilledButton.icon(
-                      onPressed: isLunas
-                          ? null
-                          : () => QrisPaymentSheet.show(
-                              context,
-                              transaction: tx,
-                              existingPayment: payment,
-                              currentUid: _currentUid,
-                              currentNama: _currentNama,
-                              financeService: _service,
-                            ),
-                      icon: const Icon(Icons.payment_rounded, size: 16),
-                      label: Text(isMenunggu ? 'Lihat Bukti' : 'Bayar Kas'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppTheme.primaryBlue,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                    SizedBox(
+                      height: 38,
+                      child: FilledButton.icon(
+                        onPressed: isLunas
+                            ? null
+                            : () => QrisPaymentSheet.show(
+                                context,
+                                transaction: tx,
+                                existingPayment: payment,
+                                currentUid: _currentUid,
+                                currentNama: _currentNama,
+                                financeService: _service,
+                              ),
+                        icon: const Icon(Icons.payment_rounded, size: 14),
+                        label: Text(isMenunggu ? 'Lihat Bukti' : 'Bayar Kas'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppTheme.primaryBlue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
+                          minimumSize: const Size(0, 38),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          shape: const StadiumBorder(),
+                          textStyle: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),
@@ -775,265 +994,516 @@ class _FinancePageState extends State<FinancePage>
     );
   }
 
-  Widget _buildArusKasTab(List<FinanceTransaction> list) {
-    if (list.isEmpty) {
-      return const Center(
-        child: Text(
-          'Belum ada catatan buku kas.',
-          style: TextStyle(color: AppTheme.textSecondary),
-        ),
+  // ============ ARUS KAS LIST ============
+
+  List<Widget> _buildArusKasListItems(List<FinanceTransaction> list) {
+    return list.map((tx) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: _buildArusKasCard(tx),
       );
-    }
+    }).toList();
+  }
 
-    final itemCount = _canExportPdf ? list.length + 1 : list.length;
+  Widget _buildArusKasCard(FinanceTransaction tx) {
+    final isIncome = tx.isIncome;
+    final isConfirmed = tx.isDikonfirmasi;
 
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-      itemCount: itemCount,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
-      itemBuilder: (context, index) {
-        // Banner Unduh Laporan PDF di bagian paling atas Tab Buku Kas
-        if (_canExportPdf && index == 0) {
-          return Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppTheme.lightBlue.withValues(alpha: 0.45),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: AppTheme.primaryBlue.withValues(alpha: 0.2),
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(9),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryBlue,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.picture_as_pdf_rounded,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Laporan Pertanggungjawaban PDF',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.textPrimary,
-                        ),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Unduh atau bagikan rekap resmi buku kas HIMA TI',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppTheme.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: _isGeneratingPdf
-                      ? null
-                      : () => _showExportPdfOptions(list),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppTheme.primaryBlue,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'Unduh',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        final tx = list[_canExportPdf ? index - 1 : index];
-        final isIncome = tx.isIncome;
-        final isConfirmed = tx.isDikonfirmasi;
-
-        return Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppTheme.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.borderLight),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: AppTheme.borderLight),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryBlue.withOpacity(0.035),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: isIncome ? AppTheme.successBg : AppTheme.errorBg,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      isIncome
-                          ? Icons.south_west_rounded
-                          : Icons.north_east_rounded,
-                      color: isIncome ? AppTheme.success : AppTheme.error,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          tx.judul,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${tx.kategori.toUpperCase()} • ${tx.createdAt.day}/${tx.createdAt.month}/${tx.createdAt.year}',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppTheme.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Text(
-                    '${isIncome ? '+' : '-'} ${_formatRupiah(tx.nominal)}',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: isIncome ? AppTheme.success : AppTheme.error,
-                    ),
-                  ),
-                ],
-              ),
-              if (tx.deskripsi.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  tx.deskripsi,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.textSecondary,
-                  ),
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: isIncome ? AppTheme.successBg : AppTheme.errorBg,
+                  borderRadius: BorderRadius.circular(10),
                 ),
-              ],
-              const SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
+                child: Icon(
+                  isIncome
+                      ? Icons.south_west_rounded
+                      : Icons.north_east_rounded,
+                  color: isIncome ? AppTheme.success : AppTheme.error,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      tx.judul,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.textPrimary,
+                      ),
                     ),
-                    decoration: BoxDecoration(
-                      color: isConfirmed
-                          ? AppTheme.successBg
-                          : AppTheme.warningBg,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      isConfirmed
-                          ? 'Audit Ketua: Sah'
-                          : 'Menunggu Konfirmasi Ketua',
-                      style: TextStyle(
+                    const SizedBox(height: 2),
+                    Text(
+                      '${tx.kategori.toUpperCase()} • ${tx.createdAt.day}/${tx.createdAt.month}/${tx.createdAt.year}',
+                      style: const TextStyle(
                         fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: isConfirmed
-                            ? AppTheme.success
-                            : AppTheme.warning,
+                        color: AppTheme.textSecondary,
                       ),
                     ),
-                  ),
-                  if (_isLeader && !isConfirmed)
-                    FilledButton(
-                      onPressed: () => _service.confirmTransaction(
-                        txId: tx.id,
-                        status: 'dikonfirmasi',
-                      ),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppTheme.success,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        minimumSize: const Size(0, 30),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                      ),
-                      child: const Text(
-                        'Konfirmasi Kas',
-                        style: TextStyle(fontSize: 11),
-                      ),
-                    ),
-                  if (_isBendahara)
-                    IconButton(
-                      icon: const Icon(
-                        Icons.delete_outline,
-                        size: 18,
-                        color: AppTheme.error,
-                      ),
-                      onPressed: () => _confirmDelete(tx.id),
-                    ),
-                ],
+                  ],
+                ),
+              ),
+              Text(
+                '${isIncome ? '+' : '-'} ${_formatRupiah(tx.nominal)}',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: isIncome ? AppTheme.success : AppTheme.error,
+                ),
               ),
             ],
           ),
-        );
-      },
+          if (tx.deskripsi.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              tx.deskripsi,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppTheme.textSecondary,
+                height: 1.4,
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: isConfirmed ? AppTheme.successBg : AppTheme.warningBg,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  isConfirmed
+                      ? 'Audit Ketua: Sah'
+                      : 'Menunggu Konfirmasi Ketua',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: isConfirmed ? AppTheme.success : AppTheme.warning,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              if (_isLeader && !isConfirmed)
+                FilledButton(
+                  onPressed: () => _service.confirmTransaction(
+                    txId: tx.id,
+                    status: 'dikonfirmasi',
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppTheme.success,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    minimumSize: const Size(0, 32),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  child: const Text('Konfirmasi'),
+                ),
+              if (_isBendahara)
+                IconButton(
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    size: 18,
+                    color: AppTheme.error,
+                  ),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                  ),
+                  onPressed: () => _confirmDelete(tx.id),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============ EMPTY STATE ============
+
+  Widget _buildEmptyState() {
+    final isTagihan = _selectedTab == 0;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 23, horizontal: 17),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppTheme.borderLight),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: const BoxDecoration(
+              color: AppTheme.lightBlue,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isTagihan
+                  ? Icons.receipt_long_outlined
+                  : Icons.account_balance_wallet_outlined,
+              size: 25,
+              color: AppTheme.primaryBlue,
+            ),
+          ),
+          const SizedBox(height: 11),
+          Text(
+            isTagihan ? 'Belum ada tagihan kas' : 'Belum ada catatan buku kas',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _isBendahara
+                ? 'Tekan tombol "+" di kanan atas untuk membuat catatan baru.'
+                : 'Data akan muncul di sini saat ditambahkan bendahara.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+          ),
+        ],
+      ),
     );
   }
 
   void _confirmDelete(String txId) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Hapus Catatan Kas?'),
-        content: const Text(
-          'Data transaksi ini akan dihapus permanen dari Firestore.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Batal'),
+      builder: (dialogContext) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _service.deleteTransaction(txId);
-            },
-            style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
-            child: const Text('Hapus'),
+          backgroundColor: AppTheme.surface,
+          surfaceTintColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 24,
           ),
-        ],
-      ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // ===== HEADER =====
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppTheme.errorBg,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.warning_amber_rounded,
+                        color: AppTheme.error,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Hapus Catatan Kas?',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textPrimary,
+                              height: 1.3,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Data transaksi ini akan dihapus permanen dari Firestore dan tidak dapat dikembalikan.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.textSecondary,
+                              height: 1.45,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 20),
+
+                // ===== TOMBOL AKSI =====
+                Row(
+                  children: [
+                    // Batal
+                    Expanded(
+                      child: SizedBox(
+                        height: 40,
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.of(dialogContext).pop(),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppTheme.textSecondary,
+                            side: BorderSide(
+                              color: AppTheme.borderLight,
+                              width: 1.2,
+                            ),
+                            padding: EdgeInsets.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            shape: const StadiumBorder(),
+                            textStyle: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          child: const Text('Batal'),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+
+                    // Hapus
+                    Expanded(
+                      child: SizedBox(
+                        height: 40,
+                        child: FilledButton(
+                          onPressed: () {
+                            Navigator.of(dialogContext).pop();
+                            _service.deleteTransaction(txId);
+                          },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppTheme.error,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            shape: const StadiumBorder(),
+                            textStyle: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          child: const Text('Hapus'),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
+}
+
+// ============ SOFT BACKGROUND PAINTER ============
+
+class _FinanceSoftBackgroundPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final width = size.width;
+    final height = size.height;
+
+    final wave1 = Path()
+      ..moveTo(0, 0)
+      ..lineTo(width, 0)
+      ..lineTo(width, height * 0.48)
+      ..cubicTo(
+        width * 0.78,
+        height * 0.58,
+        width * 0.55,
+        height * 0.35,
+        width * 0.30,
+        height * 0.48,
+      )
+      ..cubicTo(
+        width * 0.15,
+        height * 0.56,
+        width * 0.08,
+        height * 0.50,
+        0,
+        height * 0.43,
+      )
+      ..close();
+
+    final paint1 = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0x80B8CCFF), Color(0x66D5E1FF), Color(0x33EAF0FF)],
+      ).createShader(Rect.fromLTWH(0, 0, width, height));
+    canvas.drawPath(wave1, paint1);
+
+    final wave2 = Path()
+      ..moveTo(0, height * 0.28)
+      ..cubicTo(
+        width * 0.25,
+        height * 0.42,
+        width * 0.55,
+        height * 0.18,
+        width,
+        height * 0.38,
+      )
+      ..lineTo(width, height * 0.65)
+      ..cubicTo(
+        width * 0.68,
+        height * 0.53,
+        width * 0.35,
+        height * 0.72,
+        0,
+        height * 0.55,
+      )
+      ..close();
+
+    final paint2 = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topRight,
+        end: Alignment.bottomLeft,
+        colors: [Color(0x3386A8FF), Color(0x1F86A8FF), Color(0x00FFFFFF)],
+      ).createShader(Rect.fromLTWH(0, 0, width, height));
+    canvas.drawPath(wave2, paint2);
+
+    final wave3 = Path()
+      ..moveTo(0, height * 0.48)
+      ..cubicTo(
+        width * 0.30,
+        height * 0.65,
+        width * 0.65,
+        height * 0.38,
+        width,
+        height * 0.55,
+      )
+      ..lineTo(width, height * 0.78)
+      ..cubicTo(
+        width * 0.60,
+        height * 0.67,
+        width * 0.30,
+        height * 0.83,
+        0,
+        height * 0.68,
+      )
+      ..close();
+
+    canvas.drawPath(wave3, Paint()..color = const Color(0x1486A8FF));
+  }
+
+  @override
+  bool shouldRepaint(covariant _FinanceSoftBackgroundPainter oldDelegate) =>
+      false;
+}
+
+class _FolderCardPainter extends CustomPainter {
+  final Color color;
+  _FolderCardPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path();
+    const tabWidth = 116.0; // Lebar tab
+    const tabHeight = 20.0; // Tinggi tab
+    const radius = 22.0; // Radius body
+
+    // Mulai dari kiri bawah tab
+    path.moveTo(0, tabHeight);
+    path.lineTo(0, 16); // Sisi kiri tab
+    path.quadraticBezierTo(0, 0, 16, 0); // Sudut kiri atas tab
+
+    // Garis atas tab
+    path.lineTo(tabWidth - 16, 0);
+
+    // Lengkungan landai turun ke body (S-Curve halus)
+    path.quadraticBezierTo(
+      tabWidth + 15,
+      0, // Titik kontrol menarik ke kanan
+      tabWidth + 30,
+      tabHeight + 5, // Titik akhir turun
+    );
+
+    // Garis lurus di atas body
+    path.lineTo(size.width - radius, tabHeight + 5);
+
+    // Sudut kanan atas body
+    path.quadraticBezierTo(
+      size.width,
+      tabHeight + 5,
+      size.width,
+      tabHeight + 5 + radius,
+    );
+
+    // Sisi kanan body
+    path.lineTo(size.width, size.height - radius);
+    path.quadraticBezierTo(
+      size.width,
+      size.height,
+      size.width - radius,
+      size.height,
+    );
+
+    // Sisi bawah body
+    path.lineTo(radius, size.height);
+    path.quadraticBezierTo(0, size.height, 0, size.height - radius);
+
+    path.close();
+
+    // Gambar dengan gradient
+    final paint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFF2647B5), Color(0xFF1E3A8A)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))
+      ..style = PaintingStyle.fill;
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

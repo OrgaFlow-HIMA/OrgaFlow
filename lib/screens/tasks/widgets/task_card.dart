@@ -46,28 +46,15 @@ class TaskCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Baris badge (role & status)
+          // ===== BADGE ROW =====
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               if (showRoleBadge)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppTheme.lightBlue,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    task.targetRole.label,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.primaryBlue,
-                    ),
-                  ),
+                _buildBadge(
+                  label: task.targetRole.label,
+                  bgColor: AppTheme.lightBlue,
+                  fgColor: AppTheme.primaryBlue,
                 )
               else
                 const SizedBox.shrink(),
@@ -76,9 +63,11 @@ class TaskCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
 
-          // Judul
+          // ===== JUDUL =====
           Text(
             task.title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
@@ -87,7 +76,7 @@ class TaskCard extends StatelessWidget {
             ),
           ),
 
-          // Deskripsi
+          // ===== DESKRIPSI =====
           if (task.description.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(
@@ -102,34 +91,45 @@ class TaskCard extends StatelessWidget {
             ),
           ],
 
-          // Tanggal
+          // ===== INFO TENGGAT & SELESAI =====
           if (task.dueAt != null || (isDone && task.completedAt != null)) ...[
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 12,
-              runSpacing: 6,
-              children: [
-                if (task.dueAt != null)
-                  _buildDateChip(
-                    icon: isOverdue
-                        ? Icons.warning_amber_rounded
-                        : Icons.access_time_rounded,
-                    label: 'Tenggat: ${_formatDate(task.dueAt!)}',
-                    color: isOverdue ? AppTheme.error : AppTheme.textSecondary,
-                  ),
-                if (isDone && task.completedAt != null)
-                  _buildDateChip(
-                    icon: Icons.check_circle_outline_rounded,
-                    label: 'Selesai: ${_formatDate(task.completedAt!)}',
-                    color: AppTheme.success,
-                  ),
-              ],
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppTheme.background,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (task.dueAt != null)
+                    _buildInfoRow(
+                      icon: isOverdue
+                          ? Icons.warning_amber_rounded
+                          : Icons.access_time_rounded,
+                      label: 'Tenggat',
+                      value: _formatDate(task.dueAt!),
+                      color: isOverdue ? AppTheme.error : AppTheme.textPrimary,
+                    ),
+                  if (isDone && task.completedAt != null && task.dueAt != null)
+                    const SizedBox(height: 6),
+                  if (isDone && task.completedAt != null)
+                    _buildInfoRow(
+                      icon: Icons.check_circle_outline_rounded,
+                      label: 'Selesai',
+                      value: _formatDate(task.completedAt!),
+                      color: AppTheme.success,
+                    ),
+                ],
+              ),
             ),
           ],
 
-          // Tombol aksi
+          // ===== TOMBOL AKSI =====
           if (showActionButton && !isDone && onMarkDone != null) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               height: 40,
@@ -167,59 +167,92 @@ class TaskCard extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusBadge({required bool isDone, required bool isOverdue}) {
-    Color bg;
-    Color fg;
-    String label;
+  // ===== BADGE UMUM =====
 
-    if (isDone) {
-      bg = AppTheme.successBg;
-      fg = AppTheme.success;
-      label = 'Selesai';
-    } else if (isOverdue) {
-      bg = AppTheme.errorBg;
-      fg = AppTheme.error;
-      label = 'Terlambat';
-    } else {
-      bg = AppTheme.warningBg;
-      fg = AppTheme.warning;
-      label = 'Belum Selesai';
-    }
-
+  Widget _buildBadge({
+    required String label,
+    required Color bgColor,
+    required Color fgColor,
+  }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: bg,
+        color: bgColor,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         label,
-        style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: fg),
+        style: TextStyle(
+          fontSize: 9,
+          fontWeight: FontWeight.w700,
+          color: fgColor,
+        ),
       ),
     );
   }
 
-  Widget _buildDateChip({
+  // ===== BADGE STATUS =====
+
+  Widget _buildStatusBadge({required bool isDone, required bool isOverdue}) {
+    if (isDone) {
+      return _buildBadge(
+        label: 'Selesai',
+        bgColor: AppTheme.successBg,
+        fgColor: AppTheme.success,
+      );
+    }
+    if (isOverdue) {
+      return _buildBadge(
+        label: 'Terlambat',
+        bgColor: AppTheme.errorBg,
+        fgColor: AppTheme.error,
+      );
+    }
+    return _buildBadge(
+      label: 'Belum Selesai',
+      bgColor: AppTheme.warningBg,
+      fgColor: AppTheme.warning,
+    );
+  }
+
+  // ===== INFO ROW DALAM KOTAK =====
+
+  Widget _buildInfoRow({
     required IconData icon,
     required String label,
+    required String value,
     required Color color,
   }) {
     return Row(
-      mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 14, color: color),
-        const SizedBox(width: 4),
+        const SizedBox(width: 6),
         Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
+          '$label:',
+          style: const TextStyle(
+            fontSize: 10,
             fontWeight: FontWeight.w500,
-            color: color,
+            color: AppTheme.textSecondary,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
           ),
         ),
       ],
     );
   }
+
+  // ===== FORMAT TANGGAL =====
 
   String _formatDate(DateTime date) {
     const months = [
@@ -241,6 +274,6 @@ class TaskCard extends StatelessWidget {
     final year = date.year;
     final hour = date.hour.toString().padLeft(2, '0');
     final minute = date.minute.toString().padLeft(2, '0');
-    return '$day $month $year, $hour:$minute';
+    return '$day $month $year • $hour:$minute';
   }
 }

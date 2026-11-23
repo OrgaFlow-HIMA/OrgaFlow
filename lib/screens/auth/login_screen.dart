@@ -26,7 +26,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   // ===== Layout Constants =====
-  static const double _fieldRadius = 14;
+  static const double _fieldRadius = 12;
   static const double _gapBetweenFields = 18;
 
   static const Color _borderColor = Color(0xFFE0E0E0);
@@ -227,7 +227,7 @@ class _LoginScreenState extends State<LoginScreen> {
             Text(
               'Kembali',
               style: TextStyle(
-                fontSize: 15,
+                fontSize: 14,
                 fontWeight: FontWeight.w500,
                 color: Colors.white,
               ),
@@ -258,11 +258,11 @@ class _LoginScreenState extends State<LoginScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          padding: const EdgeInsets.only(left: 4, bottom: 6),
           child: Text(
             label,
             style: const TextStyle(
-              fontSize: 14,
+              fontSize: 13, // ← sebelumnya 14
               fontWeight: FontWeight.w600,
               color: AppTheme.textPrimary,
             ),
@@ -278,15 +278,22 @@ class _LoginScreenState extends State<LoginScreen> {
           textInputAction: textInputAction,
           enabled: !_isLoading,
           onFieldSubmitted: (_) => onSubmitted?.call(),
-          style: const TextStyle(fontSize: 15, color: AppTheme.textPrimary),
+          style: const TextStyle(
+            fontSize: 13, // ← sebelumnya 15
+            color: AppTheme.textPrimary,
+          ),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(color: _hintColor, fontSize: 14),
+            hintStyle: const TextStyle(
+              color: _hintColor,
+              fontSize: 13, // ← sebelumnya 14
+            ),
+            isDense: true, // ← baru: tinggi field lebih ramping
             filled: true,
             fillColor: Colors.white,
             contentPadding: const EdgeInsets.symmetric(
-              horizontal: 18,
-              vertical: 18,
+              horizontal: 14, // ← sebelumnya 18
+              vertical: 16, // ← sebelumnya 18
             ),
             suffixIcon: suffixIcon,
             border: OutlineInputBorder(
@@ -301,7 +308,7 @@ class _LoginScreenState extends State<LoginScreen> {
               borderRadius: BorderRadius.circular(_fieldRadius),
               borderSide: const BorderSide(
                 color: AppTheme.primaryBlue,
-                width: 1.5,
+                width: 1.4, // ← sebelumnya 1.5
               ),
             ),
             errorBorder: OutlineInputBorder(
@@ -312,9 +319,12 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             focusedErrorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(_fieldRadius),
-              borderSide: const BorderSide(color: AppTheme.error, width: 1.5),
+              borderSide: const BorderSide(
+                color: AppTheme.error,
+                width: 1.4, // ← sebelumnya 1.5
+              ),
             ),
-            errorStyle: const TextStyle(fontSize: 12),
+            errorStyle: const TextStyle(fontSize: 11), // ← sebelumnya 12
           ),
         ),
       ],
@@ -464,7 +474,7 @@ class _LoginScreenState extends State<LoginScreen> {
             : const Text(
                 'Masuk',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: Colors.white,
                 ),
