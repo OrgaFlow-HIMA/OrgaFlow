@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import '../core/constants/app_constants.dart';
 import '../core/utils/auth_error_mapper.dart';
 import '../enums/user_role.dart';
@@ -87,21 +88,33 @@ class AuthService {
     );
 
     try {
+      debugPrint('[OrgaFlow AuthService] Menyimpan user profile ke Firestore: users/${user.uid} (status: ${AppConstants.statusPending})');
       await FirebaseFirestore.instance
           .collection(AppConstants.usersCollection)
           .doc(user.uid)
           .set(newProfile.toMap());
+      debugPrint('[OrgaFlow AuthService] Berhasil menyimpan user profile ke Firestore!');
     } on FirebaseException catch (e) {
+      debugPrint('[OrgaFlow AuthService ERROR] FirebaseException simpan profil: ${e.code} - ${e.message}');
       // Jika penulisan Firestore gagal, hapus user auth agar tidak menggantung
-      await user.delete();
+      try {
+        await user.delete();
+      } catch (_) {}
       throw AuthServiceException('Gagal menyimpan profil pendaftaran: ${e.message ?? e.code}');
     } catch (e) {
-      await user.delete();
-      throw const AuthServiceException('Terjadi kesalahan saat menyimpan data pendaftaran.');
+      debugPrint('[OrgaFlow AuthService ERROR] General Exception simpan profil: $e');
+      try {
+        await user.delete();
+      } catch (_) {}
+      throw AuthServiceException('Terjadi kesalahan saat menyimpan data pendaftaran: $e');
     }
 
     // Keluarkan dari sesi agar tidak langsung login sebelum di-ACC
-    await _auth.signOut();
+    try {
+      await _auth.signOut();
+    } catch (e) {
+      debugPrint('[OrgaFlow AuthService] Gagal signOut setelah register: $e');
+    }
 
     return newProfile;
   }

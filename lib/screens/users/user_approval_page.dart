@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../models/user_profile.dart';
@@ -87,6 +88,38 @@ class _UserApprovalPageState extends State<UserApprovalPage>
         ],
       ),
     );
+  }
+
+  Future<void> _openOrDownloadDocument(String url) async {
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Format URL dokumen tidak valid.'),
+          backgroundColor: AppTheme.error,
+        ),
+      );
+      return;
+    }
+
+    try {
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched) {
+        throw Exception('Tidak dapat membuka tautan');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal membuka/mengunduh dokumen: $e'),
+            backgroundColor: AppTheme.error,
+          ),
+        );
+      }
+    }
   }
 
   void _copyToClipboard(String text) {
@@ -393,56 +426,93 @@ class _UserApprovalPageState extends State<UserApprovalPage>
                   if (isPengurus) ...[
                     const SizedBox(height: 10),
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: const Color(0xFFEFF6FF),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: const Color(0xFFBFDBFE)),
                       ),
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(
-                            Icons.file_present_rounded,
-                            color: AppTheme.primaryBlue,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Surat Tugas / SK Pengurus:',
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.file_present_rounded,
+                                color: AppTheme.primaryBlue,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              const Expanded(
+                                child: Text(
+                                  'Dokumen Surat Tugas / SK Pengurus:',
                                   style: TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 12,
                                     fontWeight: FontWeight.bold,
                                     color: AppTheme.primaryBlue,
                                   ),
                                 ),
-                                Text(
-                                  user.suratTugasUrl ?? 'Tidak ada lampiran',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: Color(0xFF1D4ED8),
+                              ),
+                              if (user.suratTugasUrl != null &&
+                                  user.suratTugasUrl!.isNotEmpty)
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.copy_rounded,
+                                    size: 18,
+                                    color: AppTheme.primaryBlue,
                                   ),
+                                  tooltip: 'Salin Link',
+                                  constraints: const BoxConstraints(),
+                                  padding: EdgeInsets.zero,
+                                  onPressed: () =>
+                                      _copyToClipboard(user.suratTugasUrl!),
                                 ),
-                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            user.suratTugasUrl ?? 'Tidak ada lampiran',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF1D4ED8),
                             ),
                           ),
                           if (user.suratTugasUrl != null &&
-                              user.suratTugasUrl!.isNotEmpty)
-                            IconButton(
-                              icon: const Icon(
-                                Icons.copy_rounded,
-                                size: 18,
-                                color: AppTheme.primaryBlue,
+                              user.suratTugasUrl!.isNotEmpty) ...[
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: () => _openOrDownloadDocument(
+                                    user.suratTugasUrl!),
+                                icon: const Icon(
+                                  Icons.download_rounded,
+                                  size: 18,
+                                ),
+                                label: const Text(
+                                  'Unduh / Buka Dokumen',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppTheme.primaryBlue,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  visualDensity: VisualDensity.compact,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
                               ),
-                              tooltip: 'Salin Link',
-                              onPressed: () =>
-                                  _copyToClipboard(user.suratTugasUrl!),
                             ),
+                          ],
                         ],
                       ),
                     ),

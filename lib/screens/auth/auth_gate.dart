@@ -30,7 +30,6 @@ class _AuthGateState extends State<AuthGate> {
   bool _showWelcome = true;
   bool _showRegister = false;
   bool _isJustRegistered = false;
-  bool _ignoreAuthChanges = false; // FLAG UNTUK MENCEGAH GLITCH SAAT REGISTER
   String? _sessionErrorMessage;
 
   @override
@@ -137,19 +136,21 @@ class _AuthGateState extends State<AuthGate> {
     return StreamBuilder<User?>(
       stream: _authService.authStateChanges,
       builder: (context, snapshot) {
-        // Jika sedang mendaftar dan user tiba-tiba login (karena proses register),
-        // abaikan perubahan auth agar SnackBar sukses bisa tampil tanpa glitch.
-        if (_ignoreAuthChanges && _showRegister) {
+        // Tampilkan RegisterScreen jika mode register aktif
+        if (_showRegister) {
           return RegisterScreen(
-            key: const ValueKey('register_screen_ignored'),
+            key: const ValueKey('register_screen_active'),
             authService: _authService,
             onBackToLogin: () {
               setState(() {
                 _showRegister = false;
-                _ignoreAuthChanges = false;
+                _sessionErrorMessage = null;
               });
             },
-            onRegisterSuccess: () {}, // Do nothing
+            onRegisterSuccess: () {
+              // Bersihkan session error agar tidak terbawa ke layar login
+              _sessionErrorMessage = null;
+            },
           );
         }
 
@@ -168,23 +169,6 @@ class _AuthGateState extends State<AuthGate> {
             return WelcomeScreen(
               key: const ValueKey('welcome_screen'),
               onContinue: () => setState(() => _showWelcome = false),
-            );
-          }
-
-          if (_showRegister) {
-            return RegisterScreen(
-              key: const ValueKey('register_screen'),
-              authService: _authService,
-              onBackToLogin: () {
-                setState(() {
-                  _showRegister = false;
-                  _ignoreAuthChanges = false;
-                });
-              },
-              onRegisterSuccess: () {
-                // Set flag agar AuthGate mengabaikan perubahan auth sementara
-                setState(() => _ignoreAuthChanges = true);
-              },
             );
           }
 

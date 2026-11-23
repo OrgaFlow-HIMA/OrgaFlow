@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-
-import '../../core/constants/app_constants.dart';
-import '../../core/theme/app_theme.dart';
+import 'package:flutter_orgaflow/core/theme/app_theme.dart';
 
 class WelcomeScreen extends StatelessWidget {
   final VoidCallback onContinue;
@@ -10,132 +8,122 @@ class WelcomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Sesuaikan dengan warna background gambar ilustrasi
+    final Color topBackgroundColor = const Color(0xFFE5E5FA);
+
     return Scaffold(
-      backgroundColor: AppTheme.background,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 40.0),
-          child: Column(
-            children: [
-              const Spacer(),
-              // Ilustrasi / Icon Pusat
-              Container(
-                width: 200,
-                height: 200,
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryBlue.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
+      backgroundColor: topBackgroundColor,
+      body: Stack(
+        children: [
+          // 1. GAMBAR ILUSTRASI (Sebagai Background Utama)
+          Positioned.fill(
+            bottom:
+                MediaQuery.of(context).size.height *
+                0.4, // Sisakan ruang di bawah
+            child: Image.asset(
+              'assets/images/illustration-welcome.webp',
+              fit: BoxFit.cover,
+              alignment: const Alignment(0.0, -0.2), // Sedikit diturunkan
+            ),
+          ),
+
+          // 3. CONTAINER PUTIH (Overlap menimpa gambar)
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Container(
+              height:
+                  MediaQuery.of(context).size.height *
+                  0.50, // Ambil 45% layar bagian bawah
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(30),
+                  topRight: Radius.circular(30),
                 ),
-                child: Center(
-                  child: Container(
-                    width: 140,
-                    height: 140,
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryBlue,
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.primaryBlue.withValues(alpha: 0.3),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
+                // --- SHADOW HALUS ---
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(
+                      0.08,
+                    ), // Warna hitam transparan
+                    blurRadius: 20, // Tingkat kehalusan bayangan
+                    spreadRadius: 2, // Sedikit melebar
+                    offset: const Offset(0, -5), // Bayangan mengarah ke atas
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32.0,
+                  vertical: 24.0,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    Column(
+                      children: [
+                        SizedBox(height: 36),
+                        // --- JUDUL ---
+                        const Text(
+                          'Kelola Organisasi\nJadi Lebih Mudah',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1A1A1A),
+                            height: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // --- DESKRIPSI ---
+                        const Text(
+                          'Bangun kolaborasi, kelola anggota, dan koordinasikan kegiatan organisasi dalam satu aplikasi.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey,
+                            height: 1.5,
+                          ),
                         ),
                       ],
                     ),
-                    child: const Icon(
-                      Icons.hub_rounded,
-                      color: Colors.white,
-                      size: 70,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 50),
-              // Teks Sambutan
-              const Text(
-                'Selamat Datang di ${AppConstants.appName}',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: AppTheme.textPrimary,
-                  letterSpacing: -0.8,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                AppConstants.appTagline,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.accentBlue,
-                ),
-              ),
-              const SizedBox(height: 14),
-              const Text(
-                'Kelola agenda, tugas, keuangan, dan anggota organisasi dalam satu platform yang rapi dan terintegrasi.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppTheme.textSecondary,
-                  height: 1.6,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: AppTheme.lightBlue,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  AppConstants.organizationName,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.primaryBlue,
-                  ),
-                ),
-              ),
-              const Spacer(),
 
-              const SizedBox(height: 40),
-              // Tombol Lanjutkan
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: onContinue,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryBlue,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 18),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Lanjutkan ke Login',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                    const SizedBox(height: 90),
+
+                    // --- TOMBOL MULAI SEKARANG ---
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 56,
+                        child: ElevatedButton(
+                          onPressed: onContinue,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryBlue,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                          ),
+                          child: const Text(
+                            'Mulai Sekarang',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ),
-                      SizedBox(width: 8),
-                      Icon(Icons.arrow_forward_rounded, size: 20),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

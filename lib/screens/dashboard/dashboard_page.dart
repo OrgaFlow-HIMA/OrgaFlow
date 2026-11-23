@@ -13,13 +13,7 @@ import '../profile/profile_page.dart';
 import '../tasks/tasks_page.dart';
 import '../users/user_approval_page.dart';
 import 'dashboard_home_view.dart';
-
-class DashboardNavItem {
-  final String label;
-  final IconData icon;
-
-  const DashboardNavItem({required this.label, required this.icon});
-}
+import '../../widgets/custom_bottom_nav.dart';
 
 /// Halaman Kerangka Dashboard Utama untuk Seluruh Role di OrgaFlow.
 /// Mengatur navigasi tab bawah (Bottom Navigation Bar) secara dinamis sesuai role.
@@ -42,10 +36,11 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   int _selectedIndex = 0;
 
+  // _navItems tetap di sini karena bergantung pada role user
   List<DashboardNavItem> get _navItems {
     final role = widget.profile.role;
     final items = <DashboardNavItem>[
-      const DashboardNavItem(label: 'Beranda', icon: Icons.dashboard_outlined),
+      const DashboardNavItem(label: 'Beranda', icon: Icons.home_outlined),
       const DashboardNavItem(
         label: 'Agenda',
         icon: Icons.event_available_outlined,
@@ -96,7 +91,9 @@ class _DashboardPageState extends State<DashboardPage> {
     final currentLabel = navItems[clampedIndex].label;
 
     return Scaffold(
+      extendBody: true,
       backgroundColor: AppTheme.background,
+
       appBar: AppBar(
         title: const Text(
           AppConstants.appName,
@@ -136,24 +133,19 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
         ],
       ),
-      body: _buildCurrentTab(currentLabel),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: clampedIndex,
-        onTap: (index) => setState(() => _selectedIndex = index),
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: AppTheme.surface,
-        selectedItemColor: AppTheme.primaryBlue,
-        unselectedItemColor: AppTheme.textSecondary,
-        selectedFontSize: 11,
-        unselectedFontSize: 11,
-        items: navItems
-            .map(
-              (item) => BottomNavigationBarItem(
-                icon: Icon(item.icon),
-                label: item.label,
-              ),
-            )
-            .toList(),
+
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        child: KeyedSubtree(
+          key: ValueKey(currentLabel),
+          child: _buildCurrentTab(currentLabel),
+        ),
+      ),
+
+      bottomNavigationBar: CustomBottomNavBar(
+        selectedIndex: clampedIndex,
+        onItemSelected: (index) => setState(() => _selectedIndex = index),
+        items: navItems,
       ),
     );
   }
@@ -175,7 +167,7 @@ class _DashboardPageState extends State<DashboardPage> {
           role: widget.profile.role,
         );
       case 'Persetujuan':
-        return DekanApprovalPage();
+        return const DekanApprovalPage();
       case 'Keuangan':
         return FinancePage(
           userRole: widget.profile.role,
