@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 
-/// Komponen reusable untuk menampilkan kondisi kosong (empty state) pada daftar tugas.
 class TaskEmptyState extends StatelessWidget {
   final String title;
   final String? subtitle;
@@ -19,7 +18,7 @@ class TaskEmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+      padding: const EdgeInsets.symmetric(vertical: 23, horizontal: 17),
       decoration: BoxDecoration(
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(18),
@@ -29,23 +28,20 @@ class TaskEmptyState extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppTheme.lightBlue.withOpacity(0.5),
+            width: 48,
+            height: 48,
+            decoration: const BoxDecoration(
+              color: AppTheme.lightBlue,
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              icon,
-              size: 40,
-              color: AppTheme.primaryBlue.withOpacity(0.8),
-            ),
+            child: Icon(icon, size: 25, color: AppTheme.primaryBlue),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 11),
           Text(
             title,
             textAlign: TextAlign.center,
             style: const TextStyle(
-              fontSize: 15,
+              fontSize: 13,
               fontWeight: FontWeight.w700,
               color: AppTheme.textPrimary,
             ),
@@ -56,7 +52,7 @@ class TaskEmptyState extends StatelessWidget {
               subtitle!,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 12,
+                fontSize: 11,
                 color: AppTheme.textSecondary,
               ),
             ),

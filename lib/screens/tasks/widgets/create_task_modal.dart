@@ -5,7 +5,6 @@ import '../../../core/theme/app_theme.dart';
 import '../../../enums/user_role.dart';
 import '../../../services/task_service.dart';
 
-/// Modal bottom sheet untuk membuat tugas baru.
 class CreateTaskModal extends StatefulWidget {
   final TaskService taskService;
   final VoidCallback? onTaskCreated;
@@ -16,7 +15,6 @@ class CreateTaskModal extends StatefulWidget {
     this.onTaskCreated,
   });
 
-  /// Helper statis untuk menampilkan modal ini dengan praktis
   static Future<void> show(
     BuildContext context, {
     TaskService? taskService,
@@ -25,6 +23,7 @@ class CreateTaskModal extends StatefulWidget {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -48,6 +47,23 @@ class _CreateTaskModalState extends State<CreateTaskModal> {
   UserRole _selectedRole = UserRole.anggota;
   DateTime? _selectedDueDate;
   bool _isLoading = false;
+
+  // Style seragam
+  static const TextStyle _inputTextStyle = TextStyle(
+    fontSize: 12,
+    color: AppTheme.textPrimary,
+    height: 1.35,
+  );
+  static const TextStyle _hintStyle = TextStyle(
+    fontSize: 12,
+    color: AppTheme.textSecondary,
+    height: 1.35,
+  );
+  static const TextStyle _labelStyle = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w700,
+    color: AppTheme.textPrimary,
+  );
 
   @override
   void dispose() {
@@ -95,6 +111,7 @@ class _CreateTaskModalState extends State<CreateTaskModal> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Sesi login tidak ditemukan. Silakan login kembali.'),
+          backgroundColor: AppTheme.error,
         ),
       );
       return;
@@ -137,212 +154,372 @@ class _CreateTaskModalState extends State<CreateTaskModal> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        24,
-        20,
-        MediaQuery.of(context).viewInsets.bottom + 24,
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
-      child: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: SafeArea(
+        top: false,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.9,
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+            child: Form(
+              key: _formKey,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
-                    'Buat Tugas Baru',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.textPrimary,
+                  // Grabber
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
+                  const SizedBox(height: 14),
 
-              // Input Judul
-              const Text(
-                'Judul Tugas',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _titleController,
-                decoration: InputDecoration(
-                  hintText: 'Misal: Rekap Data Keuangan LPJ',
-                  filled: true,
-                  fillColor: AppTheme.background,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: AppTheme.borderLight),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: AppTheme.borderLight),
-                  ),
-                ),
-                validator: (val) {
-                  if (val == null || val.trim().isEmpty) {
-                    return 'Judul tugas wajib diisi';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 14),
-
-              // Input Deskripsi
-              const Text(
-                'Deskripsi / Catatan',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _descriptionController,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  hintText: 'Jelaskan rincian atau instruksi tugas...',
-                  filled: true,
-                  fillColor: AppTheme.background,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: AppTheme.borderLight),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: AppTheme.borderLight),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-
-              // Pilihan Target Role
-              const Text(
-                'Target Role Penerima',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 6),
-              DropdownButtonFormField<UserRole>(
-                value: _selectedRole,
-                items: UserRole.values.map((role) {
-                  return DropdownMenuItem(
-                    value: role,
-                    child: Text(role.label),
-                  );
-                }).toList(),
-                onChanged: (role) {
-                  if (role != null) {
-                    setState(() => _selectedRole = role);
-                  }
-                },
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: AppTheme.background,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: AppTheme.borderLight),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: AppTheme.borderLight),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-
-              // Pilihan Tenggat Waktu
-              const Text(
-                'Tenggat Waktu (Opsional)',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppTheme.background,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppTheme.borderLight),
-                      ),
-                      child: Text(
-                        _selectedDueDate != null
-                            ? '${_selectedDueDate!.day}/${_selectedDueDate!.month}/${_selectedDueDate!.year} ${_selectedDueDate!.hour.toString().padLeft(2, '0')}:${_selectedDueDate!.minute.toString().padLeft(2, '0')}'
-                            : 'Belum ditentukan',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: _selectedDueDate != null
-                              ? AppTheme.textPrimary
-                              : AppTheme.textSecondary,
+                  // Header
+                  Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: AppTheme.lightBlue,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.assignment_add,
+                          color: AppTheme.primaryBlue,
+                          size: 22,
                         ),
                       ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Buat Tugas Baru',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Delegasikan tugas ke role organisasi',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          color: AppTheme.textSecondary,
+                        ),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+
+                  // Judul
+                  const Text('Judul Tugas', style: _labelStyle),
+                  const SizedBox(height: 6),
+                  TextFormField(
+                    controller: _titleController,
+                    style: _inputTextStyle,
+                    textInputAction: TextInputAction.next,
+                    decoration: _inputDecoration(
+                      'Misal: Rekap Data Keuangan LPJ',
+                    ),
+                    validator: (val) {
+                      if (val == null || val.trim().isEmpty) {
+                        return 'Judul tugas wajib diisi';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Deskripsi
+                  const Text('Deskripsi / Catatan', style: _labelStyle),
+                  const SizedBox(height: 6),
+                  TextFormField(
+                    controller: _descriptionController,
+                    maxLines: 3,
+                    style: _inputTextStyle,
+                    textInputAction: TextInputAction.newline,
+                    decoration: _inputDecoration(
+                      'Jelaskan rincian atau instruksi tugas...',
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  OutlinedButton.icon(
-                    onPressed: _pickDueDate,
-                    icon: const Icon(Icons.calendar_today_rounded, size: 16),
-                    label: const Text('Pilih'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
+                  const SizedBox(height: 14),
+
+                  // Target Role
+                  const Text('Target Role Penerima', style: _labelStyle),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<UserRole>(
+                    value: _selectedRole,
+                    isExpanded: true,
+                    itemHeight: null,
+                    style: _inputTextStyle,
+                    icon: const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: AppTheme.textSecondary,
+                      size: 20,
+                    ),
+                    items: UserRole.values.map((role) {
+                      return DropdownMenuItem<UserRole>(
+                        value: role,
+                        child: Text(
+                          role.label,
+                          style: _inputTextStyle,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (role) {
+                      if (role != null) {
+                        setState(() => _selectedRole = role);
+                      }
+                    },
+                    decoration: _inputDecoration(null).copyWith(
+                      hintText: null,
+                      contentPadding: const EdgeInsets.symmetric(
                         horizontal: 14,
                         vertical: 12,
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Tenggat Waktu
+                  const Text('Tenggat Waktu (Opsional)', style: _labelStyle),
+                  const SizedBox(height: 6),
+                  _buildDateTimeCard(
+                    date: _selectedDueDate,
+                    onTap: _pickDueDate,
+                    onClear: _selectedDueDate == null
+                        ? null
+                        : () => setState(() => _selectedDueDate = null),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Submit
+                  SizedBox(
+                    width: double.infinity,
+                    height: 46,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryBlue,
+                        borderRadius: BorderRadius.circular(50),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.primaryBlue.withOpacity(0.25),
+                            blurRadius: 12,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(50),
+                          onTap: _isLoading ? null : _handleSubmit,
+                          child: Center(
+                            child: _isLoading
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: const [
+                                      Icon(
+                                        Icons.send_rounded,
+                                        color: Colors.white,
+                                        size: 16,
+                                      ),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        'Publikasikan Tugas',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
-              // Tombol Submit
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: _isLoading ? null : _handleSubmit,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppTheme.primaryBlue,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+  // ============ HELPERS ============
+
+  Widget _buildDateTimeCard({
+    required DateTime? date,
+    required VoidCallback onTap,
+    VoidCallback? onClear,
+  }) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
+    ];
+
+    String label;
+    Color labelColor;
+    if (date != null) {
+      final time =
+          '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+      label = '${date.day} ${months[date.month - 1]} ${date.year} • $time WIB';
+      labelColor = AppTheme.textPrimary;
+    } else {
+      label = 'Belum ditentukan';
+      labelColor = AppTheme.textSecondary;
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppTheme.background,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppTheme.borderLight),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppTheme.lightBlue,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.calendar_today_rounded,
+                  size: 16,
+                  color: AppTheme.primaryBlue,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: _inputTextStyle.copyWith(color: labelColor),
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (onClear != null) ...[
+                InkWell(
+                  onTap: onClear,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: AppTheme.errorBg,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.close_rounded,
+                      size: 16,
+                      color: AppTheme.error,
                     ),
                   ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text(
-                          'Simpan & Publikasikan Tugas',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
+                ),
+                const SizedBox(width: 6),
+              ],
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryBlue,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'Atur',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  InputDecoration _inputDecoration(String? hint) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: _hintStyle,
+      filled: true,
+      fillColor: AppTheme.background,
+      isDense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppTheme.borderLight),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppTheme.borderLight),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 1.4),
+      ),
+      errorStyle: const TextStyle(fontSize: 11),
     );
   }
 }

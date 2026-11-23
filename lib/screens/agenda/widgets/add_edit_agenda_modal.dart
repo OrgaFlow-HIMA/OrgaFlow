@@ -60,6 +60,23 @@ class _AddEditAgendaModalState extends State<AddEditAgendaModal> {
 
   bool get _isEdit => widget.agenda != null;
 
+  // Style input seragam — dipakai di semua TextFormField
+  static const TextStyle _inputTextStyle = TextStyle(
+    fontSize: 12,
+    color: AppTheme.textPrimary,
+    height: 1.35,
+  );
+  static const TextStyle _hintStyle = TextStyle(
+    fontSize: 12,
+    color: AppTheme.textSecondary,
+    height: 1.35,
+  );
+  static const TextStyle _labelStyle = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w700,
+    color: AppTheme.textPrimary,
+  );
+
   @override
   void initState() {
     super.initState();
@@ -97,6 +114,7 @@ class _AddEditAgendaModalState extends State<AddEditAgendaModal> {
     final initial = isStart
         ? _tanggalWaktu
         : (_selesaiWaktu ?? _tanggalWaktu.add(const Duration(hours: 2)));
+
     final date = await showDatePicker(
       context: context,
       initialDate: initial,
@@ -223,16 +241,17 @@ class _AddEditAgendaModalState extends State<AddEditAgendaModal> {
         top: false,
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.88,
+            maxHeight: MediaQuery.of(context).size.height * 0.9,
           ),
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
             child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // Grabber
                   Center(
                     child: Container(
                       width: 40,
@@ -243,88 +262,75 @@ class _AddEditAgendaModalState extends State<AddEditAgendaModal> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
+
+                  // Header
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: AppTheme.lightBlue,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          _isEdit
+                              ? Icons.edit_calendar_rounded
+                              : Icons.event_available_rounded,
+                          color: AppTheme.primaryBlue,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
                       Expanded(
-                        child: Text(
-                          _isEdit ? 'Edit Agenda' : 'Tambah Agenda Baru',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: AppTheme.textPrimary,
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _isEdit ? 'Edit Agenda' : 'Tambah Agenda Baru',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _isEdit
+                                  ? 'Perbarui detail jadwal agenda'
+                                  : 'Lengkapi detail jadwal kegiatan',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.close_rounded),
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          color: AppTheme.textSecondary,
+                        ),
                         onPressed: () => Navigator.of(context).pop(),
                       ),
                     ],
                   ),
+                  const SizedBox(height: 18),
+
+                  // Tipe
+                  const Text('Tipe Agenda', style: _labelStyle),
+                  const SizedBox(height: 8),
+                  _buildTypeSwitcher(),
                   const SizedBox(height: 16),
 
-                  // ===== Tipe Agenda =====
-                  const Text(
-                    'Tipe Agenda',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: AppTheme.lightBlue.withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _TypeChip(
-                            label: 'Offline (Tatap Muka)',
-                            icon: Icons.place_rounded,
-                            selected: _tipe == 'offline',
-                            onTap: () {
-                              setState(() {
-                                _tipe = 'offline';
-                                if (_lokasiController.text == 'Google Meet' ||
-                                    _lokasiController.text == 'Zoom Meeting') {
-                                  _lokasiController.text =
-                                      'Ruang Seminar Gedung D';
-                                }
-                              });
-                            },
-                          ),
-                        ),
-                        Expanded(
-                          child: _TypeChip(
-                            label: 'Online (Daring)',
-                            icon: Icons.videocam_rounded,
-                            selected: _tipe == 'online',
-                            onTap: () {
-                              setState(() {
-                                _tipe = 'online';
-                                if (_lokasiController.text.contains('Ruang') ||
-                                    _lokasiController.text.isEmpty) {
-                                  _lokasiController.text = 'Google Meet';
-                                }
-                              });
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  // ===== Judul =====
-                  const Text(
-                    'Judul Agenda',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                  ),
+                  // Judul
+                  const Text('Judul Agenda', style: _labelStyle),
                   const SizedBox(height: 6),
                   TextFormField(
                     controller: _judulController,
+                    style: _inputTextStyle,
                     decoration: _inputDecoration(
                       'Contoh: Rapat Evaluasi Triwulan BPH',
                     ),
@@ -334,16 +340,14 @@ class _AddEditAgendaModalState extends State<AddEditAgendaModal> {
                   ),
                   const SizedBox(height: 14),
 
-                  // ===== Kategori =====
-                  const Text(
-                    'Kategori / Penanggung Jawab',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                  ),
+                  // Kategori
+                  const Text('Kategori / Penanggung Jawab', style: _labelStyle),
                   const SizedBox(height: 6),
                   TextFormField(
                     controller: _kategoriController,
+                    style: _inputTextStyle,
                     decoration: _inputDecoration(
-                      'Contoh: BPH & BPO, Divisi Acara, dll.',
+                      'Contoh: BPH & BPO, Divisi Acara',
                     ),
                     validator: (val) => val == null || val.trim().isEmpty
                         ? 'Kategori wajib diisi'
@@ -351,21 +355,19 @@ class _AddEditAgendaModalState extends State<AddEditAgendaModal> {
                   ),
                   const SizedBox(height: 14),
 
-                  // ===== Lokasi =====
+                  // Lokasi
                   Text(
                     _tipe == 'online' ? 'Platform Online' : 'Lokasi / Ruangan',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: _labelStyle,
                   ),
                   const SizedBox(height: 6),
                   TextFormField(
                     controller: _lokasiController,
+                    style: _inputTextStyle,
                     decoration: _inputDecoration(
                       _tipe == 'online'
                           ? 'Contoh: Google Meet / Zoom'
-                          : 'Contoh: Ruang Seminar Gedung D Lt. 2',
+                          : 'Contoh: Ruang Seminar Gedung D',
                     ),
                     validator: (val) => val == null || val.trim().isEmpty
                         ? 'Lokasi/Platform wajib diisi'
@@ -373,141 +375,99 @@ class _AddEditAgendaModalState extends State<AddEditAgendaModal> {
                   ),
                   const SizedBox(height: 14),
 
-                  // ===== Link Meeting & Link Absensi (Online) =====
-                  Offstage(
-                    offstage: _tipe != 'online',
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          'Tautan Link Meeting (Zoom / Google Meet)',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        TextFormField(
-                          controller: _linkMeetingController,
-                          decoration: _inputDecoration(
-                            'https://meet.google.com/xyz-abcd-efg',
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-
-                        // KOTAK BARU: Tautan Link Absensi (Google Form)
-                        const Text(
-                          'Tautan Link Absensi (Google Form)',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        TextFormField(
-                          controller: _linkAbsensiController,
-                          decoration: _inputDecoration(
-                            'https://forms.gle/xxxxxxxxxx (Opsional)',
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                      ],
-                    ),
+                  // Tautan online (animated)
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 240),
+                    curve: Curves.easeOutCubic,
+                    child: _tipe == 'online'
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildOnlineLinksCard(),
+                              const SizedBox(height: 14),
+                            ],
+                          )
+                        : const SizedBox.shrink(),
                   ),
 
-                  // ===== Waktu =====
-                  const Text(
-                    'Waktu Pelaksanaan',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                  ),
+                  // Waktu
+                  const Text('Waktu Pelaksanaan', style: _labelStyle),
                   const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 14,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppTheme.background,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppTheme.borderLight),
-                          ),
-                          child: Text(
-                            '${_tanggalWaktu.day}/${_tanggalWaktu.month}/${_tanggalWaktu.year} • '
-                            '${_tanggalWaktu.hour.toString().padLeft(2, '0')}:'
-                            '${_tanggalWaktu.minute.toString().padLeft(2, '0')} WIB',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppTheme.textPrimary,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      _AturButton(onTap: () => _pickDateTime(isStart: true)),
-                    ],
+                  _buildDateTimeCard(
+                    start: _tanggalWaktu,
+                    onTap: () => _pickDateTime(isStart: true),
                   ),
                   const SizedBox(height: 14),
 
-                  // ===== Deskripsi =====
-                  const Text(
-                    'Deskripsi / Catatan Agenda',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                  ),
+                  // Deskripsi
+                  const Text('Deskripsi / Catatan Agenda', style: _labelStyle),
                   const SizedBox(height: 6),
                   TextFormField(
                     controller: _deskripsiController,
                     maxLines: 3,
+                    style: _inputTextStyle,
                     decoration: _inputDecoration(
                       'Rincian pembahasan atau dresscode...',
                     ),
                   ),
                   const SizedBox(height: 24),
 
-                  // ===== Submit =====
+                  // Submit
                   SizedBox(
                     width: double.infinity,
-                    child: FilledButton(
-                      onPressed: _isLoading ? null : _handleSubmit,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppTheme.primaryBlue,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Opacity(
-                            opacity: _isLoading ? 0 : 1,
-                            child: Text(
-                              _isEdit
-                                  ? 'Simpan Perubahan'
-                                  : 'Publikasikan Agenda',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                          Offstage(
-                            offstage: !_isLoading,
-                            child: const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            ),
+                    height: 46,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryBlue,
+                        borderRadius: BorderRadius.circular(50),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.primaryBlue.withOpacity(0.25),
+                            blurRadius: 12,
+                            offset: const Offset(0, 5),
                           ),
                         ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(50),
+                          onTap: _isLoading ? null : _handleSubmit,
+                          child: Center(
+                            child: _isLoading
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        _isEdit
+                                            ? Icons.save_rounded
+                                            : Icons.send_rounded,
+                                        color: Colors.white,
+                                        size: 16,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        _isEdit
+                                            ? 'Simpan Perubahan'
+                                            : 'Publikasikan',
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -520,57 +480,246 @@ class _AddEditAgendaModalState extends State<AddEditAgendaModal> {
     );
   }
 
-  InputDecoration _inputDecoration(String hint) {
-    return InputDecoration(
-      hintText: hint,
-      filled: true,
-      fillColor: AppTheme.background,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: AppTheme.borderLight),
+  // ============ HELPERS ============
+
+  Widget _buildTypeSwitcher() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppTheme.lightBlue.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.borderLight),
       ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: AppTheme.borderLight),
+      child: Row(
+        children: [
+          Expanded(
+            child: _TypeChip(
+              label: 'Tatap Muka',
+              icon: Icons.place_rounded,
+              selected: _tipe == 'offline',
+              onTap: () {
+                setState(() {
+                  _tipe = 'offline';
+                  if (_lokasiController.text == 'Google Meet' ||
+                      _lokasiController.text == 'Zoom Meeting') {
+                    _lokasiController.text = 'Ruang Seminar Gedung D';
+                  }
+                });
+              },
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: _TypeChip(
+              label: 'Daring',
+              icon: Icons.videocam_rounded,
+              selected: _tipe == 'online',
+              onTap: () {
+                setState(() {
+                  _tipe = 'online';
+                  if (_lokasiController.text.contains('Ruang') ||
+                      _lokasiController.text.isEmpty) {
+                    _lokasiController.text = 'Google Meet';
+                  }
+                });
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
-}
 
-/// Tombol "Atur" custom — menghindari masalah constraint `OutlinedButton`.
-class _AturButton extends StatelessWidget {
-  final VoidCallback onTap;
-  const _AturButton({required this.onTap});
+  Widget _buildOnlineLinksCard() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppTheme.lightBlue.withOpacity(0.45),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.accentBlue.withOpacity(0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryBlue,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.link_rounded,
+                  color: Colors.white,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Tautan Agenda Online',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Text('Link Meeting (Zoom / Google Meet)', style: _labelStyle),
+          const SizedBox(height: 6),
+          TextFormField(
+            controller: _linkMeetingController,
+            style: _inputTextStyle,
+            decoration: _inputDecoration(
+              'https://meet.google.com/xyz-abcd-efg',
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Link Absensi (Google Form) — Opsional',
+            style: _labelStyle,
+          ),
+          const SizedBox(height: 6),
+          TextFormField(
+            controller: _linkAbsensiController,
+            style: _inputTextStyle,
+            decoration: _inputDecoration('https://forms.gle/xxxxxxxxxx'),
+          ),
+        ],
+      ),
+    );
+  }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildDateTimeCard({
+    required DateTime start,
+    required VoidCallback onTap,
+  }) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
+    ];
+    final time =
+        '${start.hour.toString().padLeft(2, '0')}:${start.minute.toString().padLeft(2, '0')}';
+    final dateLabel =
+        '${start.day} ${months[start.month - 1]} ${start.year} • $time WIB';
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
+            color: AppTheme.background,
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppTheme.borderLight),
           ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
+          child: Row(
             children: [
-              Icon(Icons.calendar_today_rounded, size: 16),
-              SizedBox(width: 6),
-              Text('Atur', style: TextStyle(fontWeight: FontWeight.w600)),
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppTheme.lightBlue,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.calendar_today_rounded,
+                  size: 16,
+                  color: AppTheme.primaryBlue,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Mulai',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      dateLabel,
+                      style: _inputTextStyle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryBlue,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Text(
+                  'Atur',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
       ),
     );
   }
+
+  InputDecoration _inputDecoration(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: _hintStyle,
+      filled: true,
+      fillColor: AppTheme.background,
+      isDense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppTheme.borderLight),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppTheme.borderLight),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 1.4),
+      ),
+      errorStyle: const TextStyle(fontSize: 11),
+    );
+  }
 }
 
-/// Chip untuk pemilihan tipe agenda.
+/// Chip tipe agenda — satu baris, teks singkat agar compact.
 class _TypeChip extends StatelessWidget {
   final String label;
   final IconData icon;
@@ -586,37 +735,50 @@ class _TypeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 4),
-        decoration: BoxDecoration(
-          color: selected ? AppTheme.primaryBlue : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 16,
-              color: selected ? Colors.white : AppTheme.textSecondary,
-            ),
-            const SizedBox(width: 4),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: selected ? Colors.white : AppTheme.textSecondary,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+          decoration: BoxDecoration(
+            color: selected ? AppTheme.primaryBlue : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: AppTheme.primaryBlue.withOpacity(0.25),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 15,
+                color: selected ? Colors.white : AppTheme.textSecondary,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: selected ? Colors.white : AppTheme.textPrimary,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

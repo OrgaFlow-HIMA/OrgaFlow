@@ -676,8 +676,8 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
                 Text(
                   actionLabel,
                   style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
                     color: AppTheme.accentBlue,
                   ),
                 ),

@@ -36,11 +36,15 @@ class _DashboardPageState extends State<DashboardPage> {
     final role = widget.profile.role;
     final items = <DashboardNavItem>[
       const DashboardNavItem(label: 'Beranda', icon: Icons.home_outlined),
+      const DashboardNavItem(label: 'Tugas', icon: Icons.assignment_outlined),
       const DashboardNavItem(
         label: 'Agenda',
         icon: Icons.event_available_outlined,
       ),
-      const DashboardNavItem(label: 'Tugas', icon: Icons.assignment_outlined),
+      const DashboardNavItem(
+        label: 'Keuangan',
+        icon: Icons.account_balance_wallet_outlined,
+      ),
     ];
 
     if (role == UserRole.dekan) {
@@ -51,13 +55,6 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
       );
     }
-
-    items.add(
-      const DashboardNavItem(
-        label: 'Keuangan',
-        icon: Icons.account_balance_wallet_outlined,
-      ),
-    );
 
     if (role == UserRole.sekretaris) {
       items.add(

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../models/task.dart';
 
-/// Komponen reusable untuk menampilkan detail kartu tugas.
 class TaskCard extends StatelessWidget {
   final Task task;
   final bool showRoleBadge;
@@ -27,31 +26,36 @@ class TaskCard extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(17),
         border: Border.all(
-          color: isOverdue ? AppTheme.error.withOpacity(0.3) : AppTheme.borderLight,
+          color: isOverdue
+              ? AppTheme.error.withOpacity(0.3)
+              : AppTheme.borderLight,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: AppTheme.primaryBlue.withOpacity(0.035),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Baris Badge (Role & Status)
+          // Baris badge (role & status)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               if (showRoleBadge)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: AppTheme.lightBlue,
                     borderRadius: BorderRadius.circular(6),
@@ -59,7 +63,7 @@ class TaskCard extends StatelessWidget {
                   child: Text(
                     task.targetRole.label,
                     style: const TextStyle(
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: FontWeight.w700,
                       color: AppTheme.primaryBlue,
                     ),
@@ -70,33 +74,35 @@ class TaskCard extends StatelessWidget {
               _buildStatusBadge(isDone: isDone, isOverdue: isOverdue),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
 
-          // Judul Tugas
+          // Judul
           Text(
             task.title,
             style: const TextStyle(
-              fontSize: 15,
+              fontSize: 14,
               fontWeight: FontWeight.w700,
               color: AppTheme.textPrimary,
               height: 1.3,
             ),
           ),
 
-          // Deskripsi Tugas
+          // Deskripsi
           if (task.description.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(
               task.description,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 12,
+                fontSize: 11,
                 color: AppTheme.textSecondary,
                 height: 1.4,
               ),
             ),
           ],
 
-          // Informasi Tanggal / Tenggat
+          // Tanggal
           if (task.dueAt != null || (isDone && task.completedAt != null)) ...[
             const SizedBox(height: 12),
             Wrap(
@@ -121,17 +127,18 @@ class TaskCard extends StatelessWidget {
             ),
           ],
 
-          // Tombol Aksi Selesai
+          // Tombol aksi
           if (showActionButton && !isDone && onMarkDone != null) ...[
             const SizedBox(height: 14),
             SizedBox(
               width: double.infinity,
+              height: 40,
               child: FilledButton.icon(
                 onPressed: isMarkingDone ? null : onMarkDone,
                 icon: isMarkingDone
                     ? const SizedBox(
-                        width: 16,
-                        height: 16,
+                        width: 14,
+                        height: 14,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           color: Colors.white,
@@ -140,12 +147,14 @@ class TaskCard extends StatelessWidget {
                     : const Icon(Icons.check_circle_outline, size: 16),
                 label: Text(
                   isMarkingDone ? 'Menyimpan...' : 'Tandai Selesai',
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppTheme.primaryBlue,
                   foregroundColor: Colors.white,
-                  minimumSize: const Size.fromHeight(40),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -178,18 +187,14 @@ class TaskCard extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: fg,
-        ),
+        style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: fg),
       ),
     );
   }
@@ -218,8 +223,18 @@ class TaskCard extends StatelessWidget {
 
   String _formatDate(DateTime date) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
     ];
     final day = date.day.toString().padLeft(2, '0');
     final month = months[date.month - 1];

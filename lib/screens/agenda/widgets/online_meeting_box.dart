@@ -29,11 +29,17 @@ class OnlineMeetingBox extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         title: const Row(
           children: [
-            Icon(Icons.rule_rounded, color: AppTheme.primaryBlue, size: 22),
-            SizedBox(width: 8),
-            Text('Tata Tertib Rapat', style: TextStyle(fontSize: 16)),
+            Text(
+              'Tata Tertib Rapat',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textPrimary,
+              ),
+            ),
           ],
         ),
         content: const Column(
@@ -55,7 +61,7 @@ class OnlineMeetingBox extends StatelessWidget {
             _RuleItem(
               number: '3',
               title: 'Kondisi Kamera & Mic',
-              desc: 'Nyalakan kamera (On Cam) dan hidupkan mic sesuai arahan moderator.',
+              desc: 'Nyalakan kamera (On Cam) dan mic sesuai arahan moderator.',
             ),
           ],
         ),
@@ -64,6 +70,13 @@ class OnlineMeetingBox extends StatelessWidget {
             onPressed: () => Navigator.of(ctx).pop(),
             style: FilledButton.styleFrom(
               backgroundColor: AppTheme.primaryBlue,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              textStyle: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
             ),
             child: const Text('Mengerti'),
           ),
@@ -78,9 +91,9 @@ class OnlineMeetingBox extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.lightBlue.withOpacity(0.6),
+        color: AppTheme.lightBlue.withOpacity(0.55),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.accentBlue.withOpacity(0.2)),
+        border: Border.all(color: AppTheme.accentBlue.withOpacity(0.18)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -91,7 +104,7 @@ class OnlineMeetingBox extends StatelessWidget {
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: AppTheme.primaryBlue,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
                   Icons.videocam_rounded,
@@ -165,7 +178,7 @@ class OnlineMeetingBox extends StatelessWidget {
                 const SizedBox(width: 4),
                 const Expanded(
                   child: Text(
-                    'Format nama: [DIVISI] - Nama • Lihat tata tertib →',
+                    'Format nama: [DIVISI] - Nama • Lihat tata tertib >',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
@@ -210,7 +223,7 @@ class _RuleItem extends StatelessWidget {
             number,
             style: const TextStyle(
               fontSize: 11,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w700,
               color: AppTheme.primaryBlue,
             ),
           ),

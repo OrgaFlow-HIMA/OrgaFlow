@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 
-/// Komponen switcher tab untuk memfilter status tugas (Belum Selesai vs Selesai).
 class TaskTabSwitcher extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onTabChanged;
@@ -23,81 +22,77 @@ class TaskTabSwitcher extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: AppTheme.lightBlue.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildTabItem(
-              index: 0,
-              label: todoLabel,
-              count: todoCount,
-            ),
-          ),
-          Expanded(
-            child: _buildTabItem(
-              index: 1,
-              label: doneLabel,
-              count: doneCount,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+    final labels = [todoLabel, doneLabel];
+    final counts = [todoCount, doneCount];
 
-  Widget _buildTabItem({
-    required int index,
-    required String label,
-    required int count,
-  }) {
-    final isActive = selectedIndex == index;
-    return GestureDetector(
-      onTap: () => onTabChanged(index),
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(vertical: 9),
-        decoration: BoxDecoration(
-          color: isActive ? AppTheme.primaryBlue : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: isActive ? Colors.white : AppTheme.textSecondary,
-              ),
-            ),
-            const SizedBox(width: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-              decoration: BoxDecoration(
-                color: isActive
-                    ? Colors.white.withOpacity(0.2)
-                    : AppTheme.borderLight,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                '$count',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: isActive ? Colors.white : AppTheme.textSecondary,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final tabWidth = constraints.maxWidth / labels.length;
+
+        return Container(
+          height: 46,
+          decoration: BoxDecoration(
+            color: AppTheme.lightBlue.withOpacity(0.5),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppTheme.borderLight),
+          ),
+          child: Stack(
+            children: [
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutCubic,
+                left: (selectedIndex * tabWidth) + 4,
+                top: 4,
+                bottom: 4,
+                width: tabWidth - 8,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryBlue,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primaryBlue.withOpacity(0.25),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
+              Row(
+                children: List.generate(labels.length, (i) {
+                  final isSelected = selectedIndex == i;
+                  return Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => onTabChanged(i),
+                      child: Center(
+                        child: AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 200),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w600,
+                            color: isSelected
+                                ? Colors.white
+                                : AppTheme.textSecondary,
+                          ),
+                          child: Text(
+                            '${labels[i]} (${counts[i]})',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
