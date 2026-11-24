@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/user_profile.dart';
 import '../../services/auth_service.dart';
+import 'change_password_screen.dart';
+import '../../enums/user_role.dart';
+import '../../core/constants/app_constants.dart';
 
 class LoginScreen extends StatefulWidget {
   final AuthService? authService;
@@ -129,6 +132,62 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  // =========================================================
+  // FORGOT PASSWORD → REDIRECT KE CHANGE PASSWORD
+  // =========================================================
+
+  Future<void> _handleForgotPassword() async {
+    // Reset error lama
+    setState(() => _errorMessage = null);
+
+    // Validasi email dulu — reset password butuh identitas user
+    final emailError = _validateEmail(_emailController.text);
+    if (emailError != null) {
+      setState(() {
+        _errorMessage = 'Isi email terlebih dahulu untuk mengubah kata sandi.';
+      });
+      _emailFocus.requestFocus();
+      return;
+    }
+
+    final placeholderProfile = UserProfile(
+      uid: '',
+      nama: '',
+      email: _emailController.text.trim(),
+      nim: null,
+      role: UserRole.anggota,
+      divisiId: '',
+      statusAkun: AppConstants.statusInactive,
+      createdAt: DateTime.now(),
+    );
+
+    // Push ChangePasswordScreen
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ChangePasswordScreen(
+          profile: placeholderProfile,
+          authService: _authService,
+          onSuccess: () {
+            // Karena ChangePasswordScreen tidak memanggil pop,
+            // kita pop dari sini saat sukses.
+            if (!mounted) return;
+            Navigator.of(context).pop();
+
+            // Feedback ke user setelah kembali ke LoginScreen
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                backgroundColor: AppTheme.success,
+                content: Text(
+                  'Kata sandi berhasil diperbarui. Silakan login kembali.',
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
   }
 
   // =========================================================
@@ -262,7 +321,7 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Text(
             label,
             style: const TextStyle(
-              fontSize: 13, // ← sebelumnya 14
+              fontSize: 13,
               fontWeight: FontWeight.w600,
               color: AppTheme.textPrimary,
             ),
@@ -278,22 +337,16 @@ class _LoginScreenState extends State<LoginScreen> {
           textInputAction: textInputAction,
           enabled: !_isLoading,
           onFieldSubmitted: (_) => onSubmitted?.call(),
-          style: const TextStyle(
-            fontSize: 13, // ← sebelumnya 15
-            color: AppTheme.textPrimary,
-          ),
+          style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(
-              color: _hintColor,
-              fontSize: 13, // ← sebelumnya 14
-            ),
-            isDense: true, // ← baru: tinggi field lebih ramping
+            hintStyle: const TextStyle(color: _hintColor, fontSize: 13),
+            isDense: true,
             filled: true,
             fillColor: Colors.white,
             contentPadding: const EdgeInsets.symmetric(
-              horizontal: 14, // ← sebelumnya 18
-              vertical: 16, // ← sebelumnya 18
+              horizontal: 14,
+              vertical: 16,
             ),
             suffixIcon: suffixIcon,
             border: OutlineInputBorder(
@@ -308,7 +361,7 @@ class _LoginScreenState extends State<LoginScreen> {
               borderRadius: BorderRadius.circular(_fieldRadius),
               borderSide: const BorderSide(
                 color: AppTheme.primaryBlue,
-                width: 1.4, // ← sebelumnya 1.5
+                width: 1.4,
               ),
             ),
             errorBorder: OutlineInputBorder(
@@ -319,12 +372,9 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             focusedErrorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(_fieldRadius),
-              borderSide: const BorderSide(
-                color: AppTheme.error,
-                width: 1.4, // ← sebelumnya 1.5
-              ),
+              borderSide: const BorderSide(color: AppTheme.error, width: 1.4),
             ),
-            errorStyle: const TextStyle(fontSize: 11), // ← sebelumnya 12
+            errorStyle: const TextStyle(fontSize: 11),
           ),
         ),
       ],
@@ -411,9 +461,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
 
           TextButton(
-            onPressed: () {
-              // TODO: Implementasi lupa password.
-            },
+            onPressed: _isLoading ? null : _handleForgotPassword, // ← DIUBAH
             style: TextButton.styleFrom(
               padding: EdgeInsets.zero,
               minimumSize: Size.zero,

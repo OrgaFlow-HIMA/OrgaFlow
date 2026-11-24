@@ -55,12 +55,18 @@ service cloud.firestore {
         isRole(['sekretaris'])
       );
 
-      // Pengguna dapat memperbarui profil sendiri (kecuali status_akun dan role).
-      // Sekretaris dan Ketua dapat memperbarui profil pengguna lain (termasuk verifikasi/ACC akun).
+      // Pengguna dapat memperbarui profil sendiri,
+      // kecuali field status_akun dan role.
+      // Sekretaris dapat memperbarui profil pengguna lain,
+      // termasuk status akun dan role.
       allow update: if isSignedIn() && (
-        (request.auth.uid == userId &&
-         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status_akun', 'role'])) ||
-        isRole(['sekretaris', 'ketua'])
+        (
+          request.auth.uid == userId &&
+          !request.resource.data.diff(resource.data)
+            .affectedKeys()
+            .hasAny(['status_akun', 'role'])
+        ) ||
+        isRole(['sekretaris'])
       );
 
       // Hanya sekretaris yang dapat menghapus jika pendaftaran ditolak
@@ -127,6 +133,19 @@ service cloud.firestore {
 
       // Hanya Sekretaris yang dapat menghapus agenda
       allow delete: if isRole(['sekretaris']);
+    }
+
+    // =====================================================
+    // Absensi & Kehadiran (Attendance)
+    // =====================================================
+
+    match /absensi/{absensiId} {
+
+      // Semua pengguna aktif dapat melihat data absensi
+      allow read: if isActive();
+
+      // Hanya Sekretaris aktif yang dapat membuat, mengubah, atau menghapus absensi
+      allow create, update, delete: if isRole(['sekretaris']);
     }
 
     // =====================================================

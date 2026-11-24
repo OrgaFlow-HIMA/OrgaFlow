@@ -6,6 +6,7 @@ import '../../enums/user_role.dart';
 import '../../models/agenda.dart';
 import '../../services/agenda_service.dart';
 import 'widgets/add_edit_agenda_modal.dart';
+import 'widgets/manage_attendance_sheet.dart';
 import 'widgets/online_meeting_box.dart';
 
 class AgendaPage extends StatefulWidget {
@@ -671,7 +672,10 @@ class _AgendaPageState extends State<AgendaPage> {
               agenda.linkAbsensi != null &&
               agenda.linkAbsensi!.isNotEmpty) ...[
             const SizedBox(height: 10),
-            _buildAttendanceBox(agenda.linkAbsensi!),
+            _buildAttendanceBox(agenda),
+          ] else if (_isSekretaris) ...[
+            const SizedBox(height: 10),
+            _buildSecretaryAttendanceTrigger(agenda),
           ],
         ],
       ),
@@ -680,7 +684,9 @@ class _AgendaPageState extends State<AgendaPage> {
 
   // ============ ATTENDANCE BOX ============
 
-  Widget _buildAttendanceBox(String absensiUrl) {
+  Widget _buildAttendanceBox(Agenda agenda) {
+    final absensiUrl = agenda.linkAbsensi ?? '';
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -689,78 +695,143 @@ class _AgendaPageState extends State<AgendaPage> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppTheme.accentBlue.withOpacity(0.18)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: AppTheme.primaryBlue,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              Icons.assignment_turned_in_rounded,
-              color: Colors.white,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Absensi Kehadiran',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.textPrimary,
-                  ),
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryBlue,
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  absensiUrl,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                child: const Icon(
+                  Icons.assignment_turned_in_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Absensi Kehadiran',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      absensiUrl,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.textSecondary,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.icon(
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: absensiUrl));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Tautan absensi berhasil disalin!'),
+                      backgroundColor: AppTheme.success,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.copy_rounded, size: 14),
+                label: const Text('Salin'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppTheme.primaryBlue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  minimumSize: const Size(0, 36),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  textStyle: const TextStyle(
                     fontSize: 11,
-                    color: AppTheme.textSecondary,
-                    decoration: TextDecoration.underline,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          FilledButton.icon(
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: absensiUrl));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Tautan absensi berhasil disalin!'),
-                  backgroundColor: AppTheme.success,
-                  duration: Duration(seconds: 2),
+          if (_isSekretaris) ...[
+            const SizedBox(height: 10),
+            const Divider(height: 1, color: AppTheme.borderLight),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 34,
+              child: OutlinedButton.icon(
+                onPressed: () => _openManageAttendance(agenda),
+                icon: const Icon(Icons.fact_check_outlined, size: 16),
+                label: const Text(
+                  'Input & Rekap Kehadiran Peserta',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
                 ),
-              );
-            },
-            icon: const Icon(Icons.copy_rounded, size: 14),
-            label: const Text('Salin'),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.primaryBlue,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              minimumSize: const Size(0, 36),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              textStyle: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.primaryBlue,
+                  side: const BorderSide(
+                    color: AppTheme.primaryBlue,
+                    width: 1.2,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
               ),
             ),
-          ),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _buildSecretaryAttendanceTrigger(Agenda agenda) {
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: OutlinedButton.icon(
+        onPressed: () => _openManageAttendance(agenda),
+        label: const Text(
+          'Kelola Kehadiran Peserta',
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppTheme.primaryBlue,
+          side: const BorderSide(color: AppTheme.primaryBlue, width: 1.2),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(50),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openManageAttendance(Agenda agenda) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => ManageAttendanceSheet(agenda: agenda),
     );
   }
 

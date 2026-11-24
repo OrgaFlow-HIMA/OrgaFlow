@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+import 'package:printing/printing.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/theme/app_theme.dart';
@@ -82,47 +83,334 @@ class _UserApprovalPageState extends State<UserApprovalPage> {
     );
   }
 
-  Future<void> _openOrDownloadDocument(String url) async {
-    final uri = Uri.tryParse(url.trim());
-    if (uri == null) {
+  bool _isDownloadingDoc = false;
+
+  void _previewDocument(String url, {required String candidateName}) {
+    final cleanUrl = url.trim();
+    if (cleanUrl.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Format URL dokumen tidak valid.'),
+          content: Text('Lampiran dokumen tidak tersedia.'),
           backgroundColor: AppTheme.error,
         ),
       );
       return;
     }
 
-    try {
-      final launched = await launchUrl(
-        uri,
-        mode: LaunchMode.externalApplication,
+    final isPdf = cleanUrl.toLowerCase().endsWith('.pdf');
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        child: Container(
+          width: double.infinity,
+          height: MediaQuery.of(ctx).size.height * 0.85,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.15),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              // Header Pratinjau
+              Container(
+                padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+                decoration: const BoxDecoration(
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                  border: Border(bottom: BorderSide(color: AppTheme.borderLight)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppTheme.lightBlue,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        isPdf ? Icons.picture_as_pdf_rounded : Icons.image_rounded,
+                        color: AppTheme.primaryBlue,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Pratinjau Surat Tugas',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 1),
+                          Text(
+                            candidateName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppTheme.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Tombol Unduh / Share Cepat dari Header Preview
+                    IconButton(
+                      tooltip: 'Unduh / Simpan',
+                      icon: const Icon(Icons.download_rounded, color: AppTheme.primaryBlue),
+                      onPressed: () {
+                        _openOrDownloadDocument(cleanUrl, candidateName: candidateName);
+                      },
+                    ),
+                    IconButton(
+                      tooltip: 'Tutup',
+                      icon: const Icon(Icons.close_rounded, color: AppTheme.textSecondary),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Isi Preview
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+                  child: isPdf
+                      ? PdfPreview(
+                          build: (format) async {
+                            final response = await http.get(Uri.parse(cleanUrl));
+                            if (response.statusCode >= 200 && response.statusCode < 300) {
+                              return response.bodyBytes;
+                            }
+                            throw Exception('Gagal memuat berkas PDF: ${response.statusCode}');
+                          },
+                          canChangeOrientation: false,
+                          canChangePageFormat: false,
+                          canDebug: false,
+                          allowPrinting: true,
+                          allowSharing: true,
+                          maxPageWidth: 700,
+                          loadingWidget: const Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                CircularProgressIndicator(strokeWidth: 2.5),
+                                SizedBox(height: 12),
+                                Text(
+                                  'Memuat pratinjau dokumen...',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppTheme.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          onError: (context, error) => Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.error_outline_rounded,
+                                      color: AppTheme.error, size: 40),
+                                  const SizedBox(height: 10),
+                                  const Text(
+                                    'Gagal menampilkan pratinjau dokumen',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      color: AppTheme.textPrimary,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '$error',
+                                    textAlign: TextAlign.center,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: AppTheme.textSecondary,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  FilledButton.icon(
+                                    onPressed: () => _openOrDownloadDocument(
+                                      cleanUrl,
+                                      candidateName: candidateName,
+                                    ),
+                                    icon: const Icon(Icons.download_rounded, size: 16),
+                                    label: const Text('Buka / Unduh Dokumen'),
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: AppTheme.primaryBlue,
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        )
+                      : InteractiveViewer(
+                          panEnabled: true,
+                          minScale: 0.5,
+                          maxScale: 4.0,
+                          child: Center(
+                            child: Image.network(
+                              cleanUrl,
+                              fit: BoxFit.contain,
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return const Center(
+                                  child: CircularProgressIndicator(strokeWidth: 2.5),
+                                );
+                              },
+                              errorBuilder: (context, error, stackTrace) => Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(20),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.broken_image_rounded,
+                                          color: AppTheme.error, size: 40),
+                                      const SizedBox(height: 8),
+                                      const Text(
+                                        'Gagal memuat gambar',
+                                        style: TextStyle(fontWeight: FontWeight.w600),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      FilledButton.icon(
+                                        onPressed: () => _openOrDownloadDocument(
+                                          cleanUrl,
+                                          candidateName: candidateName,
+                                        ),
+                                        icon: const Icon(Icons.download_rounded, size: 16),
+                                        label: const Text('Unduh Berkas'),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openOrDownloadDocument(String url, {String? candidateName}) async {
+    final cleanUrl = url.trim();
+    if (cleanUrl.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Lampiran dokumen tidak tersedia.'),
+          backgroundColor: AppTheme.error,
+        ),
       );
-      if (!launched) {
-        throw Exception('Tidak dapat membuka tautan');
+      return;
+    }
+
+    final isCloudinaryOrDirect = cleanUrl.contains('cloudinary.com') ||
+        cleanUrl.toLowerCase().endsWith('.pdf') ||
+        cleanUrl.toLowerCase().endsWith('.jpg') ||
+        cleanUrl.toLowerCase().endsWith('.png') ||
+        cleanUrl.toLowerCase().endsWith('.jpeg');
+
+    setState(() => _isDownloadingDoc = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Row(
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
+            SizedBox(width: 12),
+            Text('Mengunduh dokumen surat tugas...'),
+          ],
+        ),
+        duration: Duration(seconds: 2),
+      ),
+    );
+
+    try {
+      if (isCloudinaryOrDirect) {
+        final response = await http.get(Uri.parse(cleanUrl));
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          final bytes = response.bodyBytes;
+          final sanitizedName = (candidateName ?? 'surat_tugas')
+              .replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');
+          final isPdf = cleanUrl.toLowerCase().endsWith('.pdf');
+          final filename = isPdf
+              ? 'Surat_Tugas_$sanitizedName.pdf'
+              : 'Surat_Tugas_$sanitizedName.png';
+
+          // Membuka sheet preview/unduh/simpan/cetak langsung di HP
+          await Printing.sharePdf(
+            bytes: bytes,
+            filename: filename,
+          );
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Dokumen berhasil diunduh ke aplikasi.'),
+                backgroundColor: AppTheme.success,
+              ),
+            );
+          }
+          return;
+        }
+      }
+
+      // Fallback jika berupa link Google Drive atau eksternal lainnya
+      final uri = Uri.tryParse(cleanUrl);
+      if (uri != null) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        throw Exception('Format URL tidak valid');
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal membuka/mengunduh dokumen: $e'),
+            content: Text('Gagal mengunduh berkas: $e'),
             backgroundColor: AppTheme.error,
           ),
         );
       }
+    } finally {
+      if (mounted) {
+        setState(() => _isDownloadingDoc = false);
+      }
     }
-  }
-
-  void _copyToClipboard(String text) {
-    Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Link berhasil disalin ke clipboard.'),
-        backgroundColor: AppTheme.success,
-        duration: Duration(seconds: 2),
-      ),
-    );
   }
 
   void _showApprovalDialog(UserProfile user, {required bool isApprove}) {
@@ -222,12 +510,14 @@ class _UserApprovalPageState extends State<UserApprovalPage> {
               Navigator.pop(ctx);
               try {
                 if (isApprove) {
+                  debugPrint('[OrgaFlow UserApproval] Menekan Setujui untuk UID: ${user.uid} (${user.nama})');
                   await _userService.approveRegistration(
                     user.uid,
                     catatan: noteController.text.trim().isNotEmpty
                         ? noteController.text.trim()
                         : null,
                   );
+                  debugPrint('[OrgaFlow UserApproval] Selesai memanggil approveRegistration');
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -237,10 +527,12 @@ class _UserApprovalPageState extends State<UserApprovalPage> {
                     );
                   }
                 } else {
+                  debugPrint('[OrgaFlow UserApproval] Menekan Tolak untuk UID: ${user.uid} (${user.nama})');
                   await _userService.rejectRegistration(
                     user.uid,
                     alasan: noteController.text.trim(),
                   );
+                  debugPrint('[OrgaFlow UserApproval] Selesai memanggil rejectRegistration');
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -250,12 +542,14 @@ class _UserApprovalPageState extends State<UserApprovalPage> {
                     );
                   }
                 }
-              } catch (e) {
+              } catch (e, stack) {
+                debugPrint('[OrgaFlow UserApproval ERROR] Gagal setujui/tolak akun: $e\n$stack');
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Gagal memproses permohonan: $e'),
                       backgroundColor: AppTheme.error,
+                      duration: const Duration(seconds: 4),
                     ),
                   );
                 }
@@ -797,6 +1091,7 @@ class _UserApprovalPageState extends State<UserApprovalPage> {
 
   Widget _buildDocumentSection(UserProfile user) {
     final hasDoc = user.suratTugasUrl != null && user.suratTugasUrl!.isNotEmpty;
+    final isPdf = user.suratTugasUrl?.toLowerCase().endsWith('.pdf') ?? false;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -811,78 +1106,124 @@ class _UserApprovalPageState extends State<UserApprovalPage> {
           Row(
             children: [
               Container(
-                width: 32,
-                height: 32,
+                width: 34,
+                height: 34,
                 decoration: BoxDecoration(
                   color: AppTheme.primaryBlue,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(
-                  Icons.file_present_rounded,
+                child: Icon(
+                  isPdf ? Icons.picture_as_pdf_rounded : Icons.file_present_rounded,
                   color: Colors.white,
-                  size: 16,
+                  size: 18,
                 ),
               ),
               const SizedBox(width: 10),
-              const Expanded(
-                child: Text(
-                  'Surat Tugas / SK Pengurus',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.textPrimary,
-                  ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Surat Tugas / SK Pengurus',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      hasDoc ? 'Berkas lampiran siap diunduh' : 'Tidak ada berkas terlampir',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              if (hasDoc)
-                SizedBox(
-                  width: 30,
-                  height: 30,
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.copy_rounded,
-                      size: 15,
-                      color: AppTheme.primaryBlue,
-                    ),
-                    tooltip: 'Salin Link',
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    onPressed: () => _copyToClipboard(user.suratTugasUrl!),
-                  ),
-                ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            hasDoc ? user.suratTugasUrl! : 'Tidak ada lampiran',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 11,
-              color: AppTheme.textSecondary,
-              decoration: TextDecoration.underline,
-            ),
-          ),
           if (hasDoc) ...[
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              height: 36,
-              child: FilledButton.icon(
-                onPressed: () => _openOrDownloadDocument(user.suratTugasUrl!),
-                icon: const Icon(Icons.download_rounded, size: 15),
-                label: const Text(
-                  'Buka Dokumen',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
-                ),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppTheme.primaryBlue,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                // Tombol Pratinjau / Lihat Dokumen (Utama)
+                Expanded(
+                  flex: 3,
+                  child: SizedBox(
+                    height: 38,
+                    child: FilledButton.icon(
+                      onPressed: () => _previewDocument(
+                        user.suratTugasUrl!,
+                        candidateName: user.nama,
+                      ),
+                      icon: const Icon(Icons.visibility_outlined, size: 16),
+                      label: const Text(
+                        'Lihat Dokumen',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppTheme.primaryBlue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(width: 8),
+                // Tombol Unduh / Share Cepat
+                Expanded(
+                  flex: 2,
+                  child: SizedBox(
+                    height: 38,
+                    child: OutlinedButton.icon(
+                      onPressed: _isDownloadingDoc
+                          ? null
+                          : () => _openOrDownloadDocument(
+                                user.suratTugasUrl!,
+                                candidateName: user.nama,
+                              ),
+                      icon: _isDownloadingDoc
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  AppTheme.primaryBlue,
+                                ),
+                              ),
+                            )
+                          : const Icon(Icons.download_rounded, size: 16),
+                      label: Text(
+                        _isDownloadingDoc ? 'Proses...' : 'Unduh',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.primaryBlue,
+                        side: const BorderSide(
+                          color: AppTheme.primaryBlue,
+                          width: 1.2,
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ],

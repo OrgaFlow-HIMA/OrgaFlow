@@ -12,18 +12,17 @@ import '../../services/auth_service.dart';
 import '../../services/division_service.dart';
 import '../../services/task_service.dart';
 import '../../widgets/division_name_text.dart';
+import '../attendance/absensi_page.dart';
 import '../profile/profile_page.dart';
 
 class DashboardCaptions {
   final String greetingSubtitle;
   final String taskSectionTitle;
-  final String taskSectionSubtitle;
   final String noteFocus;
 
   const DashboardCaptions({
     required this.greetingSubtitle,
     required this.taskSectionTitle,
-    required this.taskSectionSubtitle,
     required this.noteFocus,
   });
 }
@@ -62,30 +61,24 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
         return const DashboardCaptions(
           greetingSubtitle: 'Kelola kebijakan dan persetujuan tingkat dekanat',
           taskSectionTitle: 'Persetujuan & Tugas Dekanat',
-          taskSectionSubtitle:
-              'Tugas dan berkas yang memerlukan peninjauan Anda',
           noteFocus: 'Fokus: Persetujuan proposal berkas dan pengawasan capaian strategis himpunan.',
         );
       case UserRole.ketua:
         return const DashboardCaptions(
           greetingSubtitle: 'Koordinasi dan pantau seluruh alur organisasi',
           taskSectionTitle: 'Tugas & Persetujuan',
-          taskSectionSubtitle:
-              'Prioritas organisasi yang perlu ditindaklanjuti',
           noteFocus: 'Fokus: Koordinasi internal pengurus inti dan pengawasan berkala program kerja.',
         );
       case UserRole.wakilKetua:
         return const DashboardCaptions(
           greetingSubtitle: 'Pantau kinerja divisi dan progres operasional',
           taskSectionTitle: 'Tugas & Pemantauan Organisasi',
-          taskSectionSubtitle: 'Progres operasional yang perlu dievaluasi',
           noteFocus: 'Fokus: Evaluasi kinerja divisi dan asistensi ketua dalam pelaksanaan proker.',
         );
       case UserRole.sekretaris:
         return const DashboardCaptions(
           greetingSubtitle: 'Kelola administrasi, tugas, dan agenda organisasi',
           taskSectionTitle: 'Tugas Organisasi Berjalan',
-          taskSectionSubtitle: 'Seluruh tugas yang sedang aktif didelegasikan',
           noteFocus: 'Fokus: Pendelegasian tugas antar-divisi dan pencatatan jadwal agenda rapat.',
         );
       case UserRole.bendahara:
@@ -93,14 +86,12 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
           greetingSubtitle:
               'Pantau arus kas dan verifikasi keuangan organisasi',
           taskSectionTitle: 'Tugas Keuangan & Verifikasi',
-          taskSectionSubtitle: 'Tugas dan verifikasi keuangan yang aktif',
           noteFocus: 'Fokus: Pencatatan kas berkala dan verifikasi pembayaran iuran anggota.',
         );
       case UserRole.kepalaDivisi:
         return const DashboardCaptions(
           greetingSubtitle: 'Kelola koordinasi dan progres anggota divisi Anda',
           taskSectionTitle: 'Tugas Divisi',
-          taskSectionSubtitle: 'Tanggung jawab divisi yang sedang berjalan',
           noteFocus: 'Fokus: Penyelesaian program kerja divisi bersama seluruh anggota.',
         );
       case UserRole.anggota:
@@ -108,7 +99,6 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
           greetingSubtitle:
               'Aktivitas dan tugas Anda di HIMA Teknik Informatika',
           taskSectionTitle: 'Tugas Saya',
-          taskSectionSubtitle: 'Penugasan aktif yang didelegasikan kepada Anda',
           noteFocus: 'Fokus: Partisipasi aktif dalam kegiatan divisi dan kehadiran rapat organisasi.',
         );
     }
@@ -293,14 +283,6 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
                                       ? 'Lihat Semua'
                                       : null,
                                   onAction: widget.onNavigateToTasks,
-                                ),
-                                const SizedBox(height: 5),
-                                Text(
-                                  captions.taskSectionSubtitle,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: AppTheme.textSecondary,
-                                  ),
                                 ),
                                 const SizedBox(height: 14),
                                 if (pendingTasks.isEmpty)
@@ -578,6 +560,8 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
   }
 
   Widget _buildCategories() {
+    final isDekan = widget.profile.role == UserRole.dekan;
+
     final categories = [
       _CategoryItem(
         title: 'Tugas',
@@ -597,12 +581,31 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
         color: AppTheme.lightBlue,
         onTap: widget.onNavigateToFinance,
       ),
-      _CategoryItem(
-        title: 'Administrasi',
-        icon: Icons.folder_open_outlined,
-        color: AppTheme.lightBlue,
-        onTap: widget.onNavigateToAdministration,
-      ),
+      if (!isDekan)
+        _CategoryItem(
+          title: 'Presensi',
+          icon: Icons.how_to_reg_outlined,
+          color: AppTheme.lightBlue,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => AbsensiPage(
+                  userName: widget.profile.nama,
+                  divisionName: widget.profile.divisiId,
+                  userRoleLabel: widget.profile.role.label,
+                ),
+              ),
+            );
+          },
+        )
+      else
+        _CategoryItem(
+          title: 'Administrasi',
+          icon: Icons.folder_open_outlined,
+          color: AppTheme.lightBlue,
+          onTap: widget.onNavigateToAdministration,
+        ),
     ];
 
     return Row(

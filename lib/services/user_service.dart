@@ -15,18 +15,64 @@ class UserService {
   UserService({FirebaseFirestore? firestore})
     : _firestore = firestore ?? FirebaseFirestore.instance;
 
-  /// Mengambil profil pengguna dari Firestore berdasarkan UID dan opsional email untuk deteksi Auto-ID
-  Future<UserProfile?> getUserProfile(String uid, {String? email}) async {
+  /// Mengambil profil pengguna dari Firestore berdasarkan UID dan opsional email untuk deteksi Auto-ID.
+  /// Secara default mencoba mengambil data terbaru dari [Source.server] terlebih dahulu
+  /// agar status terbaru (seperti approval sekretaris) langsung terbaca tanpa terhalang cache lokal.
+  Future<UserProfile?> getUserProfile(
+    String uid, {
+    String? email,
+    Source source = Source.serverAndCache,
+  }) async {
     try {
-      debugPrint('[OrgaFlow UserService] Mencari dokumen: users/$uid');
-      final docSnapshot = await _firestore
-          .collection(AppConstants.usersCollection)
-          .doc(uid)
-          .get();
+      debugPrint(
+        '[OrgaFlow UserService] Mencari dokumen: users/$uid (requested source: $source)',
+      );
+
+      // CEK SEMUA DOKUMEN DENGAN EMAIL INI DI FIRESTORE UNTUK MENDETEKSI DUPLIKASI/AUTO-ID
+      if (email != null && email.trim().isNotEmpty) {
+        try {
+          final allEmailDocs = await _firestore
+              .collection(AppConstants.usersCollection)
+              .where('email', isEqualTo: email.trim().toLowerCase())
+              .get(const GetOptions(source: Source.server));
+          debugPrint(
+            '[OrgaFlow UserService DIAGNOSTIK] Ditemukan ${allEmailDocs.docs.length} dokumen dengan email ${email.trim()}:',
+          );
+          for (final d in allEmailDocs.docs) {
+            debugPrint(
+              ' -> docId: ${d.id}, uid: ${d.data()['uid']}, status_akun: ${d.data()['status_akun']}',
+            );
+          }
+        } catch (e) {
+          debugPrint('[OrgaFlow UserService DIAGNOSTIK ERROR] $e');
+        }
+      }
+
+      DocumentSnapshot<Map<String, dynamic>> docSnapshot;
+      try {
+        docSnapshot = await _firestore
+            .collection(AppConstants.usersCollection)
+            .doc(uid)
+            .get(const GetOptions(source: Source.server));
+        debugPrint(
+          '[OrgaFlow UserService] Berhasil ambil dari SERVER! isFromCache: ${docSnapshot.metadata.isFromCache}',
+        );
+      } catch (serverErr) {
+        debugPrint(
+          '[OrgaFlow UserService WARNING] Gagal mengambil dari server ($serverErr), fallback ke default get()...',
+        );
+        docSnapshot = await _firestore
+            .collection(AppConstants.usersCollection)
+            .doc(uid)
+            .get();
+        debugPrint(
+          '[OrgaFlow UserService] Fallback get() selesai. isFromCache: ${docSnapshot.metadata.isFromCache}',
+        );
+      }
 
       if (docSnapshot.exists && docSnapshot.data() != null) {
         debugPrint(
-          '[OrgaFlow UserService] Dokumen users/$uid ditemukan: ${docSnapshot.data()}',
+          '[OrgaFlow UserService] Data users/$uid: status_akun="${docSnapshot.data()?['status_akun']}" (isFromCache: ${docSnapshot.metadata.isFromCache})',
         );
         return UserProfile.fromMap(docSnapshot.data()!, docSnapshot.id);
       }
@@ -229,16 +275,32 @@ class UserService {
   /// Menyetujui pendaftaran akun oleh Sekretaris (status menjadi 'aktif')
   Future<void> approveRegistration(String uid, {String? catatan}) async {
     try {
-      await _firestore.collection(AppConstants.usersCollection).doc(uid).update(
-        {
-          'status_akun': AppConstants.statusActive,
-          'catatan_persetujuan': catatan ?? 'Disetujui oleh Sekretaris',
-          'updated_at': Timestamp.fromDate(DateTime.now()),
-        },
+      debugPrint('[OrgaFlow UserService] Menyetujui akun users/$uid...');
+      final docRef = _firestore
+          .collection(AppConstants.usersCollection)
+          .doc(uid);
+      await docRef.set({
+        'status_akun': AppConstants.statusActive,
+        'catatan_persetujuan': catatan ?? 'Disetujui oleh Sekretaris',
+        'updated_at': Timestamp.fromDate(DateTime.now()),
+      }, SetOptions(merge: true));
+
+      // Verifikasi langsung pembacaan dari server
+      final checkDoc = await docRef.get(
+        const GetOptions(source: Source.server),
+      );
+      debugPrint(
+        '[OrgaFlow UserService] Verifikasi setelah approve: users/$uid status_akun="${checkDoc.data()?['status_akun']}" (isFromCache: ${checkDoc.metadata.isFromCache})',
       );
     } on FirebaseException catch (e) {
+      debugPrint(
+        '[OrgaFlow UserService ERROR] FirebaseException saat approve: ${e.code} - ${e.message}',
+      );
       throw Exception('Gagal menyetujui akun: ${e.message ?? e.code}');
     } catch (e) {
+      debugPrint(
+        '[OrgaFlow UserService ERROR] General Exception saat approve: $e',
+      );
       throw Exception('Terjadi kesalahan saat menyetujui akun: $e');
     }
   }

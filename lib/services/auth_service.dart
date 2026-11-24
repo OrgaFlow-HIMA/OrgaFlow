@@ -158,7 +158,9 @@ class AuthService {
     // Ambil profil dari Cloud Firestore
     UserProfile? profile;
     try {
-      profile = await _userService.getUserProfile(user.uid);
+      debugPrint('[OrgaFlow AuthService] Mengambil profil untuk UID: ${user.uid} (${user.email})');
+      profile = await _userService.getUserProfile(user.uid, email: user.email);
+      debugPrint('[OrgaFlow AuthService] Hasil profil: status_akun="${profile?.statusAkun}", isActive=${profile?.isActive}');
     } on InvalidRoleException {
       // Role tidak valid -> keluarkan pengguna dan tolak akses
       await _auth.signOut();
