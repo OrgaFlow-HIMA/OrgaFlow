@@ -1,8 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 
 import '../core/constants/app_constants.dart';
+import '../models/app_notification.dart';
 import '../models/finance_transaction.dart';
+import 'notification_service.dart';
 
 class FinanceService {
   final FirebaseFirestore _firestore;
@@ -98,6 +101,48 @@ class FinanceService {
       'created_by': user?.uid ?? '',
       'created_at': Timestamp.fromDate(now),
     });
+
+    // Pemicu Notifikasi Otomatis
+    try {
+      final notifService = NotificationService(firestore: _firestore);
+      final cleanJudul = judul.trim();
+      final senderUid = user?.uid ?? '';
+
+      if (isTagihanAnggota) {
+        // Broadcast tagihan ke seluruh anggota
+        await notifService.createNotification(
+          title: 'Tagihan Iuran Kas Baru',
+          message: 'Tagihan kas "$cleanJudul" sebesar Rp $nominal telah diterbitkan.',
+          type: NotificationType.finance,
+          targetType: NotificationTargetType.broadcast,
+          createdBy: senderUid,
+        );
+      } else {
+        // Notifikasi ke Ketua / Wakil Ketua untuk konfirmasi
+        await notifService.createNotification(
+          title: 'Transaksi Kas Perlu Konfirmasi',
+          message: 'Bendahara mencatat transaksi kas "$cleanJudul" sebesar Rp $nominal.',
+          type: NotificationType.finance,
+          targetType: NotificationTargetType.role,
+          targetRole: 'ketua',
+          createdBy: senderUid,
+        );
+      }
+
+      // Konfirmasi personal ke Bendahara pembuat
+      if (senderUid.isNotEmpty) {
+        await notifService.createNotification(
+          title: 'Berhasil Mencatat Kas',
+          message: 'Transaksi "$cleanJudul" berhasil disimpan dan diajukan.',
+          type: NotificationType.finance,
+          targetType: NotificationTargetType.user,
+          targetUserId: senderUid,
+          createdBy: senderUid,
+        );
+      }
+    } catch (notifErr) {
+      debugPrint('[OrgaFlow FinanceService WARNING] Gagal membuat notifikasi keuangan: $notifErr');
+    }
 
     return docRef.id;
   }

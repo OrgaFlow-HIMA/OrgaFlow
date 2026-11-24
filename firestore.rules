@@ -149,6 +149,26 @@ service cloud.firestore {
     }
 
     // =====================================================
+    // Notifikasi (Notifications)
+    // =====================================================
+
+    match /notifications/{notifId} {
+
+      // Semua pengguna aktif dapat membaca notifikasi
+      allow read: if isActive();
+
+      // Pengurus aktif (Sekretaris & Bendahara) dapat membuat notifikasi tugas, agenda, atau kas
+      allow create: if isRole(['sekretaris', 'bendahara']);
+
+      // Pengguna aktif dapat memperbarui daftar read_by (menandai notifikasi telah dibaca)
+      allow update: if isActive()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read_by']);
+
+      // Hanya Sekretaris yang dapat menghapus notifikasi
+      allow delete: if isRole(['sekretaris']);
+    }
+
+    // =====================================================
     // Finance Transactions
     // =====================================================
 

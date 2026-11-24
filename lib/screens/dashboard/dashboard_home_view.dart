@@ -13,7 +13,9 @@ import '../../services/division_service.dart';
 import '../../services/task_service.dart';
 import '../../widgets/division_name_text.dart';
 import '../attendance/absensi_page.dart';
+import '../notifications/notification_page.dart';
 import '../profile/profile_page.dart';
+import '../../services/notification_service.dart';
 
 class DashboardCaptions {
   final String greetingSubtitle;
@@ -379,19 +381,57 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.45),
+                color: Colors.white.withValues(alpha: 0.45),
                 shape: BoxShape.circle,
               ),
-              child: IconButton(
-                onPressed: () {
-                  // TODO: Navigasi ke halaman notifikasi
-                },
-                tooltip: 'Notifikasi',
-                icon: const Icon(
-                  Icons.notifications_none_rounded,
-                  color: AppTheme.primaryBlue,
-                  size: 22,
+              child: StreamBuilder<int>(
+                stream: NotificationService().watchUnreadCount(
+                  userId: widget.profile.uid,
+                  role: widget.profile.role,
                 ),
+                builder: (context, snapshot) {
+                  final unreadCount = snapshot.data ?? 0;
+
+                  return Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      IconButton(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => NotificationPage(
+                                currentUserId: widget.profile.uid,
+                                userRole: widget.profile.role,
+                              ),
+                            ),
+                          );
+                        },
+                        tooltip: 'Notifikasi',
+                        icon: const Icon(
+                          Icons.notifications_none_rounded,
+                          color: AppTheme.primaryBlue,
+                          size: 22,
+                        ),
+                      ),
+                      if (unreadCount > 0)
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Container(
+                            padding: const EdgeInsets.all(3.5),
+                            decoration: const BoxDecoration(
+                              color: AppTheme.error,
+                              shape: BoxShape.circle,
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 8,
+                              minHeight: 8,
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
               ),
             ),
           ),

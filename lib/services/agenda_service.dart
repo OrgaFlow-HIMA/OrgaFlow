@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 
 import '../core/constants/app_constants.dart';
 import '../models/agenda.dart';
+import '../models/app_notification.dart';
+import 'notification_service.dart';
 
 class AgendaServiceException implements Exception {
   final String message;
@@ -83,6 +85,32 @@ class AgendaService {
         'created_at': FieldValue.serverTimestamp(),
         'updated_at': FieldValue.serverTimestamp(),
       });
+
+      // Pemicu Notifikasi Otomatis
+      try {
+        final notifService = NotificationService(firestore: _firestore);
+        // 1. Broadcast ke seluruh anggota & pengurus organisasi
+        await notifService.createNotification(
+          title: 'Agenda Baru Diumumkan',
+          message: 'Agenda "$cleanJudul" telah dijadwalkan pada ${tanggalWaktu.day}/${tanggalWaktu.month}/${tanggalWaktu.year}.',
+          type: NotificationType.agenda,
+          targetType: NotificationTargetType.broadcast,
+          createdBy: createdBy.trim(),
+        );
+
+        // 2. Konfirmasi personal untuk Sekretaris pembuat agenda
+        await notifService.createNotification(
+          title: 'Berhasil Menambahkan Agenda',
+          message: 'Agenda "$cleanJudul" berhasil dipublikasikan ke seluruh anggota.',
+          type: NotificationType.agenda,
+          targetType: NotificationTargetType.user,
+          targetUserId: createdBy.trim(),
+          createdBy: createdBy.trim(),
+        );
+      } catch (notifErr) {
+        debugPrint('[OrgaFlow AgendaService WARNING] Gagal membuat notifikasi agenda: $notifErr');
+      }
+
       return docRef.id;
     } on FirebaseException catch (e) {
       debugPrint(

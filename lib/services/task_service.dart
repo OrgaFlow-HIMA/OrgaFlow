@@ -4,7 +4,9 @@ import 'package:flutter/foundation.dart';
 import '../core/constants/app_constants.dart';
 import '../enums/task_status.dart';
 import '../enums/user_role.dart';
+import '../models/app_notification.dart';
 import '../models/task.dart';
+import 'notification_service.dart';
 
 class TaskServiceException implements Exception {
   final String message;
@@ -52,6 +54,33 @@ class TaskService {
         'created_at': FieldValue.serverTimestamp(),
         if (dueAt != null) 'due_at': Timestamp.fromDate(dueAt),
       });
+
+      // Pemicu Notifikasi Otomatis
+      try {
+        final notifService = NotificationService(firestore: _firestore);
+        // 1. Notifikasi untuk role target yang ditugaskan
+        await notifService.createNotification(
+          title: 'Tugas Baru Diberikan',
+          message: 'Sekretaris menugaskan "$cleanTitle" untuk role ${targetRole.label}.',
+          type: NotificationType.task,
+          targetType: NotificationTargetType.role,
+          targetRole: targetRole.firestoreValue,
+          createdBy: createdBy.trim(),
+        );
+
+        // 2. Notifikasi konfirmasi untuk Sekretaris pembuat tugas
+        await notifService.createNotification(
+          title: 'Berhasil Membuat Tugas',
+          message: 'Tugas "$cleanTitle" berhasil dibuat untuk ${targetRole.label}.',
+          type: NotificationType.task,
+          targetType: NotificationTargetType.user,
+          targetUserId: createdBy.trim(),
+          createdBy: createdBy.trim(),
+        );
+      } catch (notifErr) {
+        debugPrint('[OrgaFlow TaskService WARNING] Gagal membuat notifikasi tugas: $notifErr');
+      }
+
       return doc.id;
     } on FirebaseException catch (e) {
       debugPrint(
