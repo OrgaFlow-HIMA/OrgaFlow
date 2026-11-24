@@ -255,6 +255,14 @@ class _TasksPageState extends State<TasksPage> {
               },
             ),
           ),
+
+          // Tombol Tambah Tugas di Kanan Bawah (FAB di atas Bottom Nav Bar)
+          if (_isSekretaris)
+            Positioned(
+              right: 20,
+              bottom: 115,
+              child: _buildAddButton(),
+            ),
         ],
       ),
     );
@@ -291,30 +299,18 @@ class _TasksPageState extends State<TasksPage> {
             ],
           ),
         ),
-        if (_isSekretaris) ...[const SizedBox(width: 12), _buildAddButton()],
       ],
     );
   }
 
   Widget _buildAddButton() {
-    return GestureDetector(
-      onTap: () => CreateTaskModal.show(context, taskService: _taskService),
-      child: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: AppTheme.primaryBlue,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.primaryBlue.withOpacity(0.25),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: const Icon(Icons.add_rounded, color: Colors.white, size: 22),
-      ),
+    return FloatingActionButton(
+      heroTag: 'fab_create_task',
+      onPressed: () => CreateTaskModal.show(context, taskService: _taskService),
+      backgroundColor: AppTheme.primaryBlue,
+      elevation: 6,
+      shape: const CircleBorder(),
+      child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
     );
   }
 

@@ -381,6 +381,14 @@ class _FinancePageState extends State<FinancePage> {
               },
             ),
           ),
+
+          // Tombol Tambah Kas di Kanan Bawah (FAB di atas Bottom Nav Bar)
+          if (_isBendahara)
+            Positioned(
+              right: 20,
+              bottom: 115,
+              child: _buildAddButton(),
+            ),
         ],
       ),
     );
@@ -425,30 +433,18 @@ class _FinancePageState extends State<FinancePage> {
           const SizedBox(width: 8),
           _buildPdfButton(allTransactions), // ← pass list
         ],
-        if (_isBendahara) ...[const SizedBox(width: 8), _buildAddButton()],
       ],
     );
   }
 
   Widget _buildAddButton() {
-    return GestureDetector(
-      onTap: () => AddFinanceModal.show(context, financeService: _service),
-      child: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: AppTheme.primaryBlue,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.primaryBlue.withOpacity(0.25),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: const Icon(Icons.add_rounded, color: Colors.white, size: 22),
-      ),
+    return FloatingActionButton(
+      heroTag: 'fab_create_finance',
+      onPressed: () => AddFinanceModal.show(context, financeService: _service),
+      backgroundColor: AppTheme.primaryBlue,
+      elevation: 6,
+      shape: const CircleBorder(),
+      child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
     );
   }
 

@@ -169,6 +169,23 @@ service cloud.firestore {
     }
 
     // =====================================================
+    // Pengumuman (Announcements)
+    // =====================================================
+
+    match /announcements/{announcementId} {
+
+      // Semua pengguna aktif dapat membaca pengumuman
+      allow read: if isActive();
+
+      // Hanya Sekretaris aktif yang dapat membuat pengumuman
+      allow create: if isRole(['sekretaris'])
+        && request.resource.data.created_by == request.auth.uid;
+
+      // Hanya Sekretaris yang dapat memperbarui dan menghapus pengumuman
+      allow update, delete: if isRole(['sekretaris']);
+    }
+
+    // =====================================================
     // Finance Transactions
     // =====================================================
 

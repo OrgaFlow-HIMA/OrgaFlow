@@ -12,7 +12,8 @@ import '../../services/auth_service.dart';
 import '../../services/division_service.dart';
 import '../../services/task_service.dart';
 import '../../widgets/division_name_text.dart';
-import '../attendance/absensi_page.dart';
+import '../announcement/announcement_page.dart';
+import '../attendance/attendance_page.dart';
 import '../notifications/notification_page.dart';
 import '../profile/profile_page.dart';
 import '../../services/notification_service.dart';
@@ -616,10 +617,20 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
         onTap: widget.onNavigateToAgenda,
       ),
       _CategoryItem(
-        title: 'Keuangan',
-        icon: Icons.account_balance_wallet_outlined,
+        title: 'Pengumuman',
+        icon: Icons.campaign_outlined,
         color: AppTheme.lightBlue,
-        onTap: widget.onNavigateToFinance,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => PengumumanPage(
+                userRole: widget.profile.role,
+                userName: widget.profile.nama,
+              ),
+            ),
+          );
+        },
       ),
       if (!isDekan)
         _CategoryItem(
@@ -630,7 +641,7 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => AbsensiPage(
+                builder: (_) => AttendancePage(
                   userName: widget.profile.nama,
                   divisionName: widget.profile.divisiId,
                   userRoleLabel: widget.profile.role.label,
@@ -750,8 +761,6 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
   }
 
   Widget _buildDashboardTaskCard(Task task) {
-    final isSekretaris = widget.profile.role == UserRole.sekretaris;
-
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 11),
@@ -777,27 +786,6 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
         children: [
           Row(
             children: [
-              if (isSekretaris) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppTheme.lightBlue,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    task.targetRole.label,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.primaryBlue,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-              ],
               Expanded(
                 child: Text(
                   task.title,

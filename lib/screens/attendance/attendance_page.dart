@@ -7,12 +7,12 @@ import '../../models/attendance_record.dart';
 import '../../services/agenda_service.dart';
 import '../../services/attendance_service.dart';
 
-class AbsensiPage extends StatefulWidget {
+class AttendancePage extends StatefulWidget {
   final String userName;
   final String? divisionName;
   final String? userRoleLabel;
 
-  const AbsensiPage({
+  const AttendancePage({
     super.key,
     this.userName = 'Pengguna',
     this.divisionName,
@@ -20,10 +20,10 @@ class AbsensiPage extends StatefulWidget {
   });
 
   @override
-  State<AbsensiPage> createState() => _AbsensiPageState();
+  State<AttendancePage> createState() => _AttendancePageState();
 }
 
-class _AbsensiPageState extends State<AbsensiPage> {
+class _AttendancePageState extends State<AttendancePage> {
   final AttendanceService _attendanceService = AttendanceService();
   final AgendaService _agendaService = AgendaService();
 
@@ -59,7 +59,7 @@ class _AbsensiPageState extends State<AbsensiPage> {
               height: 420,
               child: IgnorePointer(
                 child: CustomPaint(
-                  painter: _AbsensiSoftBackgroundPainter(),
+                  painter: _AttendanceSoftBackgroundPainter(),
                   size: Size.infinite,
                 ),
               ),
@@ -678,7 +678,7 @@ class _AbsensiPageState extends State<AbsensiPage> {
 
 // ============ SOFT BACKGROUND PAINTER ============
 
-class _AbsensiSoftBackgroundPainter extends CustomPainter {
+class _AttendanceSoftBackgroundPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final width = size.width;

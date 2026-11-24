@@ -208,6 +208,14 @@ class _AgendaPageState extends State<AgendaPage> {
               },
             ),
           ),
+
+          // Tombol Tambah Agenda di Kanan Bawah (FAB di atas Bottom Nav Bar)
+          if (_isSekretaris)
+            Positioned(
+              right: 20,
+              bottom: 115,
+              child: _buildAddButton(),
+            ),
         ],
       ),
     );
@@ -216,10 +224,10 @@ class _AgendaPageState extends State<AgendaPage> {
   // ============ TITLE + ADD BUTTON ============
 
   Widget _buildTitleBlock() {
-    return Row(
+    return const Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Expanded(
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -244,30 +252,18 @@ class _AgendaPageState extends State<AgendaPage> {
             ],
           ),
         ),
-        if (_isSekretaris) ...[const SizedBox(width: 12), _buildAddButton()],
       ],
     );
   }
 
   Widget _buildAddButton() {
-    return GestureDetector(
-      onTap: () => _showAddEditModal(),
-      child: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: AppTheme.primaryBlue,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.primaryBlue.withOpacity(0.25),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: const Icon(Icons.add_rounded, color: Colors.white, size: 22),
-      ),
+    return FloatingActionButton(
+      heroTag: 'fab_create_agenda',
+      onPressed: () => _showAddEditModal(),
+      backgroundColor: AppTheme.primaryBlue,
+      elevation: 6,
+      shape: const CircleBorder(),
+      child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
     );
   }
 
