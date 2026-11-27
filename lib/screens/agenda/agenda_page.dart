@@ -211,11 +211,7 @@ class _AgendaPageState extends State<AgendaPage> {
 
           // Tombol Tambah Agenda di Kanan Bawah (FAB di atas Bottom Nav Bar)
           if (_isSekretaris)
-            Positioned(
-              right: 20,
-              bottom: 115,
-              child: _buildAddButton(),
-            ),
+            Positioned(right: 20, bottom: 115, child: _buildAddButton()),
         ],
       ),
     );
@@ -397,30 +393,6 @@ class _AgendaPageState extends State<AgendaPage> {
             ],
           ),
         ),
-        if (_isSekretaris) ...[
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: () => _showAddEditModal(),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                Text(
-                  'Tambah',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.accentBlue,
-                  ),
-                ),
-                Icon(
-                  Icons.chevron_right_rounded,
-                  size: 20,
-                  color: AppTheme.accentBlue,
-                ),
-              ],
-            ),
-          ),
-        ],
       ],
     );
   }

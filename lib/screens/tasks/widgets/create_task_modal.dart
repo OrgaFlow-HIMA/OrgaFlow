@@ -2,7 +2,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../enums/user_role.dart';
 import '../../../services/task_service.dart';
 
 class CreateTaskModal extends StatefulWidget {
@@ -44,8 +43,11 @@ class _CreateTaskModalState extends State<CreateTaskModal> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
 
-  UserRole _selectedRole = UserRole.anggota;
+  List<Map<String, String>> _divisions = [];
+  String? _selectedDivisiId;
+  String? _selectedDivisiNama;
   DateTime? _selectedDueDate;
+  bool _isLoadingDivisions = true;
   bool _isLoading = false;
 
   // Style seragam
@@ -64,6 +66,37 @@ class _CreateTaskModalState extends State<CreateTaskModal> {
     fontWeight: FontWeight.w700,
     color: AppTheme.textPrimary,
   );
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDivisions();
+  }
+
+  Future<void> _loadDivisions() async {
+    try {
+      final list = await widget.taskService.getAllDivisions();
+      // Tambahkan opsi Bendahara (Keuangan) agar Sekretaris bisa memberi tugas ke Bendahara
+      final allTargets = [
+        ...list,
+        {'id': 'bendahara', 'nama': 'Bendahara (Keuangan)'},
+      ];
+      if (mounted) {
+        setState(() {
+          _divisions = allTargets;
+          if (allTargets.isNotEmpty) {
+            _selectedDivisiId = allTargets.first['id'];
+            _selectedDivisiNama = allTargets.first['nama'];
+          }
+          _isLoadingDivisions = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingDivisions = false);
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -106,6 +139,16 @@ class _CreateTaskModalState extends State<CreateTaskModal> {
   Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (_selectedDivisiId == null || _selectedDivisiId!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Silakan pilih divisi tujuan tugas.'),
+          backgroundColor: AppTheme.error,
+        ),
+      );
+      return;
+    }
+
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -119,20 +162,28 @@ class _CreateTaskModalState extends State<CreateTaskModal> {
 
     setState(() => _isLoading = true);
 
+    final isBendahara = _selectedDivisiId == 'bendahara';
+
     try {
       await widget.taskService.createTask(
         createdBy: uid,
         title: _titleController.text,
         description: _descriptionController.text,
-        targetRole: _selectedRole,
+        divisiId: _selectedDivisiId!,
+        divisiNama: _selectedDivisiNama,
+        targetRole: isBendahara ? 'bendahara' : null,
         dueAt: _selectedDueDate,
       );
 
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Tugas berhasil dibuat!'),
+          SnackBar(
+            content: Text(
+              isBendahara
+                  ? 'Tugas berhasil dibuat untuk Bendahara!'
+                  : 'Tugas berhasil dilimpahkan ke ${_selectedDivisiNama ?? 'Divisi'}!',
+            ),
             backgroundColor: AppTheme.success,
           ),
         );
@@ -216,7 +267,7 @@ class _CreateTaskModalState extends State<CreateTaskModal> {
                             ),
                             SizedBox(height: 2),
                             Text(
-                              'Delegasikan tugas ke role organisasi',
+                              'Distribusikan tugas organisasi',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: AppTheme.textSecondary,
@@ -237,135 +288,169 @@ class _CreateTaskModalState extends State<CreateTaskModal> {
                   const SizedBox(height: 18),
 
                   // Judul
-                  const Text('Judul Tugas', style: _labelStyle),
+                  const Text('Judul Tugas *', style: _labelStyle),
                   const SizedBox(height: 6),
                   TextFormField(
                     controller: _titleController,
                     style: _inputTextStyle,
                     textInputAction: TextInputAction.next,
                     decoration: _inputDecoration(
-                      'Misal: Rekap Data Keuangan LPJ',
+                      'Misal: Pembuatan Banner & Poster Workshop',
                     ),
                     validator: (val) {
                       if (val == null || val.trim().isEmpty) {
-                        return 'Judul tugas wajib diisi';
+                        return 'Judul tugas wajib diisi.';
                       }
                       return null;
                     },
                   ),
                   const SizedBox(height: 14),
 
+                  // Divisi Tujuan
+                  const Text('Divisi Tujuan *', style: _labelStyle),
+                  const SizedBox(height: 6),
+                  if (_isLoadingDivisions)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    )
+                  else if (_divisions.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.background,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Text(
+                        'Belum ada divisi terdaftar di sistem.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    )
+                  else
+                    DropdownButtonFormField<String>(
+                      value: _selectedDivisiId,
+                      items: _divisions.map((d) {
+                        return DropdownMenuItem(
+                          value: d['id'],
+                          child: Text(
+                            d['nama'] ?? d['id']!,
+                            style: _inputTextStyle,
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() {
+                            _selectedDivisiId = val;
+                            _selectedDivisiNama = _divisions.firstWhere(
+                              (e) => e['id'] == val,
+                            )['nama'];
+                          });
+                        }
+                      },
+                      decoration: _inputDecoration('Pilih Divisi Tujuan'),
+                    ),
+                  const SizedBox(height: 14),
+
                   // Deskripsi
-                  const Text('Deskripsi / Catatan', style: _labelStyle),
+                  const Text('Deskripsi & Rincian Tugas', style: _labelStyle),
                   const SizedBox(height: 6),
                   TextFormField(
                     controller: _descriptionController,
-                    maxLines: 3,
                     style: _inputTextStyle,
-                    textInputAction: TextInputAction.newline,
+                    maxLines: 4,
                     decoration: _inputDecoration(
-                      'Jelaskan rincian atau instruksi tugas...',
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Target Role
-                  const Text('Target Role Penerima', style: _labelStyle),
-                  const SizedBox(height: 6),
-                  DropdownButtonFormField<UserRole>(
-                    value: _selectedRole,
-                    isExpanded: true,
-                    itemHeight: null,
-                    style: _inputTextStyle,
-                    icon: const Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      color: AppTheme.textSecondary,
-                      size: 20,
-                    ),
-                    items: UserRole.values.map((role) {
-                      return DropdownMenuItem<UserRole>(
-                        value: role,
-                        child: Text(
-                          role.label,
-                          style: _inputTextStyle,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (role) {
-                      if (role != null) {
-                        setState(() => _selectedRole = role);
-                      }
-                    },
-                    decoration: _inputDecoration(null).copyWith(
-                      hintText: null,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 12,
-                      ),
+                      'Tuliskan instruksi atau format yang diharapkan dari tugas ini...',
                     ),
                   ),
                   const SizedBox(height: 14),
 
                   // Tenggat Waktu
-                  const Text('Tenggat Waktu (Opsional)', style: _labelStyle),
+                  const Text('Batas Waktu (Tenggat)', style: _labelStyle),
                   const SizedBox(height: 6),
-                  _buildDateTimeCard(
-                    date: _selectedDueDate,
+                  InkWell(
                     onTap: _pickDueDate,
-                    onClear: _selectedDueDate == null
-                        ? null
-                        : () => setState(() => _selectedDueDate = null),
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.background,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppTheme.borderLight),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.calendar_month_outlined,
+                            size: 18,
+                            color: _selectedDueDate != null
+                                ? AppTheme.primaryBlue
+                                : AppTheme.textSecondary,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _selectedDueDate != null
+                                  ? '${_selectedDueDate!.day}/${_selectedDueDate!.month}/${_selectedDueDate!.year} pukul ${_selectedDueDate!.hour.toString().padLeft(2, '0')}:${_selectedDueDate!.minute.toString().padLeft(2, '0')} WIB'
+                                  : 'Pilih batas waktu pengerjaan (opsional)',
+                              style: _selectedDueDate != null
+                                  ? _inputTextStyle
+                                  : _hintStyle,
+                            ),
+                          ),
+                          if (_selectedDueDate != null)
+                            IconButton(
+                              icon: const Icon(Icons.close_rounded, size: 16),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () =>
+                                  setState(() => _selectedDueDate = null),
+                            ),
+                        ],
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 24),
 
-                  // Submit
+                  // Tombol Kirim
                   SizedBox(
-                    width: double.infinity,
-                    height: 46,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryBlue,
-                        borderRadius: BorderRadius.circular(50),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.primaryBlue.withOpacity(0.25),
-                            blurRadius: 12,
-                            offset: const Offset(0, 5),
-                          ),
-                        ],
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
+                    height: 48,
+                    child: FilledButton(
+                      onPressed: _isLoading ? null : _handleSubmit,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppTheme.primaryBlue,
+                        shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(50),
-                          onTap: _isLoading ? null : _handleSubmit,
-                          child: Center(
-                            child: _isLoading
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: const [
-                                      Text(
-                                        'Publikasikan Tugas',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                          ),
                         ),
                       ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'Buat Tugas',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                     ),
                   ),
                 ],
@@ -377,143 +462,26 @@ class _CreateTaskModalState extends State<CreateTaskModal> {
     );
   }
 
-  // ============ HELPERS ============
-
-  Widget _buildDateTimeCard({
-    required DateTime? date,
-    required VoidCallback onTap,
-    VoidCallback? onClear,
-  }) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'Mei',
-      'Jun',
-      'Jul',
-      'Agu',
-      'Sep',
-      'Okt',
-      'Nov',
-      'Des',
-    ];
-
-    String label;
-    Color labelColor;
-    if (date != null) {
-      final time =
-          '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
-      label = '${date.day} ${months[date.month - 1]} ${date.year} • $time WIB';
-      labelColor = AppTheme.textPrimary;
-    } else {
-      label = 'Belum ditentukan';
-      labelColor = AppTheme.textSecondary;
-    }
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          decoration: BoxDecoration(
-            color: AppTheme.background,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.borderLight),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: AppTheme.lightBlue,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.calendar_today_rounded,
-                  size: 16,
-                  color: AppTheme.primaryBlue,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: _inputTextStyle.copyWith(color: labelColor),
-                ),
-              ),
-              const SizedBox(width: 8),
-              if (onClear != null) ...[
-                InkWell(
-                  onTap: onClear,
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: AppTheme.errorBg,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.close_rounded,
-                      size: 16,
-                      color: AppTheme.error,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-              ],
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryBlue,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text(
-                  'Atur',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  InputDecoration _inputDecoration(String? hint) {
+  InputDecoration _inputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
       hintStyle: _hintStyle,
       filled: true,
       fillColor: AppTheme.background,
       isDense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         borderSide: const BorderSide(color: AppTheme.borderLight),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         borderSide: const BorderSide(color: AppTheme.borderLight),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 1.4),
       ),
-      errorStyle: const TextStyle(fontSize: 11),
     );
   }
 }

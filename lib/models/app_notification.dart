@@ -4,6 +4,7 @@ enum NotificationType {
   task('task', 'Tugas'),
   agenda('agenda', 'Agenda'),
   finance('finance', 'Keuangan'),
+  proposal('proposal', 'Pengajuan & Persetujuan'),
   general('general', 'Umum');
 
   final String value;
@@ -19,6 +20,8 @@ enum NotificationType {
         return NotificationType.agenda;
       case 'finance':
         return NotificationType.finance;
+      case 'proposal':
+        return NotificationType.proposal;
       default:
         return NotificationType.general;
     }
@@ -53,6 +56,7 @@ class AppNotification {
   final NotificationTargetType targetType;
   final String? targetRole;
   final String? targetUserId;
+  final String? referenceId; // ID tugas, ID transaksi, ID proposal, ID agenda
   final String createdBy;
   final DateTime createdAt;
   final List<String> readBy;
@@ -65,6 +69,7 @@ class AppNotification {
     this.targetType = NotificationTargetType.broadcast,
     this.targetRole,
     this.targetUserId,
+    this.referenceId,
     required this.createdBy,
     required this.createdAt,
     this.readBy = const [],
@@ -92,6 +97,7 @@ class AppNotification {
       targetType: NotificationTargetType.fromString(data['target_type'] as String?),
       targetRole: (data['target_role'] as String?)?.trim(),
       targetUserId: (data['target_user_id'] as String?)?.trim(),
+      referenceId: (data['reference_id'] as String?)?.trim(),
       createdBy: (data['created_by'] as String?)?.trim() ?? '',
       createdAt: parseDate(data['created_at']),
       readBy: readByList,
@@ -106,6 +112,7 @@ class AppNotification {
       'target_type': targetType.value,
       if (targetRole != null) 'target_role': targetRole,
       if (targetUserId != null) 'target_user_id': targetUserId,
+      if (referenceId != null) 'reference_id': referenceId,
       'created_by': createdBy,
       'created_at': Timestamp.fromDate(createdAt),
       'read_by': readBy,

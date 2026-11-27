@@ -26,9 +26,15 @@ class NotificationService {
             if (notif.targetType == NotificationTargetType.broadcast) {
               return true;
             }
-            if (notif.targetType == NotificationTargetType.role &&
-                notif.targetRole == role.firestoreValue) {
-              return true;
+            if (notif.targetType == NotificationTargetType.role) {
+              // Menangani role ketua dan wakil ketua yang berbagi tanggung jawab pimpinan
+              if (notif.targetRole == 'ketua' &&
+                  (role == UserRole.ketua || role == UserRole.wakilKetua)) {
+                return true;
+              }
+              if (notif.targetRole == role.firestoreValue) {
+                return true;
+              }
             }
             if (notif.targetType == NotificationTargetType.user &&
                 notif.targetUserId == userId) {
@@ -63,6 +69,7 @@ class NotificationService {
     NotificationTargetType targetType = NotificationTargetType.broadcast,
     String? targetRole,
     String? targetUserId,
+    String? referenceId,
     required String createdBy,
   }) async {
     final docRef = await _notificationsRef.add({
@@ -72,6 +79,7 @@ class NotificationService {
       'target_type': targetType.value,
       if (targetRole != null) 'target_role': targetRole.trim(),
       if (targetUserId != null) 'target_user_id': targetUserId.trim(),
+      if (referenceId != null) 'reference_id': referenceId.trim(),
       'created_by': createdBy.trim(),
       'created_at': FieldValue.serverTimestamp(),
       'read_by': <String>[],
@@ -106,7 +114,7 @@ class NotificationService {
   }
 
   // =========================================================
-  // FITUR BARU: HAPUS NOTIFIKASI
+  // FITUR HAPUS NOTIFIKASI
   // =========================================================
 
   /// Menghapus satu notifikasi

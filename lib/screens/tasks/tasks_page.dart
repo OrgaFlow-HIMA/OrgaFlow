@@ -4,16 +4,20 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../../enums/user_role.dart';
 import '../../models/task.dart';
+import '../../models/user_profile.dart';
 import '../../services/task_service.dart';
 import 'widgets/create_task_modal.dart';
+import 'widgets/delegate_task_modal.dart';
+import 'widgets/submit_task_modal.dart';
 import 'widgets/task_card.dart';
 import 'widgets/task_empty_state.dart';
 import 'widgets/task_tab_switcher.dart';
 
 class TasksPage extends StatefulWidget {
   final UserRole role;
+  final UserProfile? userProfile;
 
-  const TasksPage({super.key, required this.role});
+  const TasksPage({super.key, required this.role, this.userProfile});
 
   @override
   State<TasksPage> createState() => _TasksPageState();
@@ -21,52 +25,50 @@ class TasksPage extends StatefulWidget {
 
 class _TasksPageState extends State<TasksPage> {
   final TaskService _taskService = TaskService();
-  int _selectedTab = 0; // 0: Perlu Dikerjakan / Berjalan, 1: Selesai
-  String? _markingTaskId;
+  int _selectedTab = 0; // 0: Berjalan/Aktif, 1: Selesai
+  String? _confirmingTaskId;
 
   bool get _isSekretaris => widget.role == UserRole.sekretaris;
+  bool get _isKadiv => widget.role == UserRole.kepalaDivisi;
+
+  String? get _divisionId => widget.userProfile?.divisiId;
+  String get _currentUid => FirebaseAuth.instance.currentUser?.uid ?? '';
 
   (String title, String subtitle) _getHeader(UserRole role) {
     switch (role) {
-      case UserRole.dekan:
-        return (
-          'Daftar Tugas & Persetujuan Dekan',
-          'Kelola persetujuan dan tugas dekanat',
-        );
-      case UserRole.ketua:
-        return (
-          'Daftar Tugas & Persetujuan',
-          'Kelola persetujuan dan progres organisasi',
-        );
-      case UserRole.wakilKetua:
-        return ('Tugas Wakil Ketua', 'Pantau progres tugas operasional');
       case UserRole.sekretaris:
         return (
-          'Kelola Tugas Organisasi',
-          'Buat dan delegasikan tugas organisasi',
+          'Monitoring Tugas Organisasi',
+          'Limpahkan tugas ke divisi & pantau penyelesaian',
         );
-      case UserRole.bendahara:
-        return ('Tugas Bendahara', 'Kelola verifikasi dan tugas keuangan');
       case UserRole.kepalaDivisi:
         return (
-          'Tugas Kepala Divisi',
-          'Koordinasikan tugas dan progres divisi',
+          'Tugas Divisi Anda',
+          'Delegasikan ke anggota & konfirmasi tugas selesai',
         );
       case UserRole.anggota:
-        return ('Tugas Saya', 'Pantau dan selesaikan tugas Anda');
+        return ('Tugas Saya', 'Kerjakan dan kumpulkan hasil tugas Anda');
+      case UserRole.bendahara:
+        return ('Tugas Bendahara', 'Daftar tugas divisi keuangan');
+      default:
+        return ('Daftar Tugas', 'Pantau aktivitas tugas himpunan');
     }
   }
 
-  Future<void> _handleMarkDone(Task task) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+  Future<void> _handleConfirmDone(Task task) async {
+    final isBendaharaTask =
+        task.targetRole == 'bendahara' || task.divisiId == 'bendahara';
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Selesaikan Tugas?'),
-        content: Text('Tandai tugas "${task.title}" sebagai selesai?'),
+        title: const Text('Setujui & Selesaikan Tugas?'),
+        content: Text(
+          isBendaharaTask
+              ? 'Konfirmasi bahwa hasil pengerjaan tugas "${task.title}" oleh Bendahara sudah sesuai dan selesai tuntas?'
+              : 'Konfirmasi bahwa hasil tugas "${task.title}" oleh ${task.assignedToNama ?? 'anggota'} sudah sesuai dan selesai tuntas?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -77,21 +79,31 @@ class _TasksPageState extends State<TasksPage> {
             style: FilledButton.styleFrom(
               backgroundColor: AppTheme.primaryBlue,
             ),
-            child: const Text('Ya, Selesai'),
+            child: const Text('Ya, Setujui Selesai'),
           ),
         ],
       ),
     );
 
     if (confirmed != true) return;
-    setState(() => _markingTaskId = task.id);
+    setState(() => _confirmingTaskId = task.id);
 
     try {
-      await _taskService.markTaskDone(taskId: task.id, completedBy: user.uid);
+      if (isBendaharaTask && _isSekretaris) {
+        await _taskService.confirmTaskBySecretary(
+          taskId: task.id,
+          secretaryUid: _currentUid,
+        );
+      } else {
+        await _taskService.confirmTaskByKadiv(
+          taskId: task.id,
+          kadivUid: _currentUid,
+        );
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Tugas berhasil diselesaikan!'),
+            content: Text('Tugas berhasil disetujui dan ditandai selesai!'),
             backgroundColor: AppTheme.success,
           ),
         );
@@ -100,14 +112,14 @@ class _TasksPageState extends State<TasksPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal menyelesaikan tugas: $e'),
+            content: Text('Gagal menyetujui tugas: $e'),
             backgroundColor: AppTheme.error,
           ),
         );
       }
     } finally {
       if (mounted) {
-        setState(() => _markingTaskId = null);
+        setState(() => _confirmingTaskId = null);
       }
     }
   }
@@ -116,9 +128,17 @@ class _TasksPageState extends State<TasksPage> {
   Widget build(BuildContext context) {
     final (title, subtitle) = _getHeader(widget.role);
 
-    final stream = _isSekretaris
-        ? _taskService.watchAllTasks()
-        : _taskService.watchTasksForRole(widget.role);
+    // Stream yang sesuai dengan peran user
+    Stream<List<Task>> taskStream;
+    if (_isSekretaris) {
+      taskStream = _taskService.watchAllTasks();
+    } else if (widget.role == UserRole.bendahara) {
+      taskStream = _taskService.watchTasksForBendahara(_currentUid);
+    } else if (_isKadiv && _divisionId != null && _divisionId!.isNotEmpty) {
+      taskStream = _taskService.watchTasksForDivision(_divisionId!);
+    } else {
+      taskStream = _taskService.watchTasksForMember(_currentUid);
+    }
 
     return Container(
       decoration: const BoxDecoration(
@@ -136,7 +156,6 @@ class _TasksPageState extends State<TasksPage> {
       ),
       child: Stack(
         children: [
-          // Wave dekoratif (samar)
           Positioned(
             top: 0,
             left: 0,
@@ -153,12 +172,14 @@ class _TasksPageState extends State<TasksPage> {
           SafeArea(
             bottom: false,
             child: StreamBuilder<List<Task>>(
-              stream: stream,
+              stream: taskStream,
               builder: (context, snapshot) {
                 final allTasks = snapshot.data ?? <Task>[];
-                final todoTasks = allTasks.where((t) => !t.isDone).toList();
+                final activeTasks = allTasks.where((t) => !t.isDone).toList();
                 final doneTasks = allTasks.where((t) => t.isDone).toList();
-                final visibleTasks = _selectedTab == 0 ? todoTasks : doneTasks;
+                final visibleTasks = _selectedTab == 0
+                    ? activeTasks
+                    : doneTasks;
 
                 final isLoading =
                     snapshot.connectionState == ConnectionState.waiting &&
@@ -184,7 +205,7 @@ class _TasksPageState extends State<TasksPage> {
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: EdgeInsets.zero,
                     children: [
-                      // Bagian atas (judul + tab)
+                      // Header judul + switcher tab
                       Padding(
                         padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
                         child: Column(
@@ -196,17 +217,17 @@ class _TasksPageState extends State<TasksPage> {
                               selectedIndex: _selectedTab,
                               onTabChanged: (index) =>
                                   setState(() => _selectedTab = index),
-                              todoCount: todoTasks.length,
+                              todoCount: activeTasks.length,
                               doneCount: doneTasks.length,
-                              todoLabel: _isSekretaris
-                                  ? 'Berjalan'
+                              todoLabel: _isSekretaris || _isKadiv
+                                  ? 'Aktif / Berjalan'
                                   : 'Perlu Dikerjakan',
                             ),
                           ],
                         ),
                       ),
 
-                      // Panel putih berisi daftar tugas
+                      // Panel putih daftar tugas
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.fromLTRB(20, 24, 20, 120),
@@ -230,7 +251,7 @@ class _TasksPageState extends State<TasksPage> {
                                     ? 'Tidak ada tugas yang menunggu'
                                     : 'Belum ada tugas selesai',
                                 subtitle: _isSekretaris && _selectedTab == 0
-                                    ? 'Tekan tombol "+" di kanan atas untuk mendelegasikan tugas.'
+                                    ? 'Tekan tombol "+" di kanan bawah untuk melimpahkan tugas ke divisi.'
                                     : 'Daftar tugas akan muncul di sini.',
                               )
                             else
@@ -239,10 +260,25 @@ class _TasksPageState extends State<TasksPage> {
                                   padding: const EdgeInsets.only(bottom: 12),
                                   child: TaskCard(
                                     task: task,
-                                    showRoleBadge: _isSekretaris,
-                                    showActionButton: !_isSekretaris,
-                                    isMarkingDone: _markingTaskId == task.id,
-                                    onMarkDone: () => _handleMarkDone(task),
+                                    userRole: widget.role,
+                                    onDelegate: () {
+                                      DelegateTaskModal.show(
+                                        context,
+                                        task: task,
+                                        divisionId:
+                                            _divisionId ?? task.divisiId,
+                                        taskService: _taskService,
+                                      );
+                                    },
+                                    onSubmit: () {
+                                      SubmitTaskModal.show(
+                                        context,
+                                        task: task,
+                                        taskService: _taskService,
+                                      );
+                                    },
+                                    onConfirm: () => _handleConfirmDone(task),
+                                    isConfirming: _confirmingTaskId == task.id,
                                   ),
                                 ),
                               ),
@@ -256,19 +292,13 @@ class _TasksPageState extends State<TasksPage> {
             ),
           ),
 
-          // Tombol Tambah Tugas di Kanan Bawah (FAB di atas Bottom Nav Bar)
+          // Tombol Tambah Tugas Khusus Sekretaris di Kanan Bawah
           if (_isSekretaris)
-            Positioned(
-              right: 20,
-              bottom: 115,
-              child: _buildAddButton(),
-            ),
+            Positioned(right: 20, bottom: 115, child: _buildAddButton()),
         ],
       ),
     );
   }
-
-  // ============ TITLE + ADD BUTTON ============
 
   Widget _buildTitleBlock(String title, String subtitle) {
     return Row(
@@ -314,67 +344,30 @@ class _TasksPageState extends State<TasksPage> {
     );
   }
 
-  // ============ SECTION HEADER ============
-
   String get _sectionTitle =>
-      _selectedTab == 0 ? 'Tugas Berjalan' : 'Tugas Selesai';
+      _selectedTab == 0 ? 'Tugas Aktif & Berjalan' : 'Tugas Selesai';
 
   String get _sectionSubtitle => _selectedTab == 0
-      ? 'Tugas yang perlu ditindaklanjuti'
-      : 'Riwayat tugas yang sudah diselesaikan';
+      ? 'Daftar penugasan yang sedang diproses'
+      : 'Riwayat tugas yang telah tuntas disetujui';
 
   Widget _buildSectionHeader() {
-    return Row(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _sectionTitle,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                _sectionSubtitle,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppTheme.textSecondary,
-                ),
-              ),
-            ],
+        Text(
+          _sectionTitle,
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.textPrimary,
           ),
         ),
-        if (_isSekretaris && _selectedTab == 0) ...[
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: () =>
-                CreateTaskModal.show(context, taskService: _taskService),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                Text(
-                  'Buat',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.accentBlue,
-                  ),
-                ),
-                Icon(
-                  Icons.chevron_right_rounded,
-                  size: 20,
-                  color: AppTheme.accentBlue,
-                ),
-              ],
-            ),
-          ),
-        ],
+        const SizedBox(height: 2),
+        Text(
+          _sectionSubtitle,
+          style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+        ),
       ],
     );
   }
@@ -393,97 +386,34 @@ class _TasksPageState extends State<TasksPage> {
   }
 }
 
-// ============ SOFT BACKGROUND PAINTER ============
-
 class _TasksSoftBackgroundPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final width = size.width;
-    final height = size.height;
+    final paint = Paint()
+      ..color = const Color(0xFFC7D7FE).withValues(alpha: 0.35)
+      ..style = PaintingStyle.fill;
 
-    final wave1 = Path()
-      ..moveTo(0, 0)
-      ..lineTo(width, 0)
-      ..lineTo(width, height * 0.48)
-      ..cubicTo(
-        width * 0.78,
-        height * 0.58,
-        width * 0.55,
-        height * 0.35,
-        width * 0.30,
-        height * 0.48,
+    final path = Path()
+      ..moveTo(0, size.height * 0.45)
+      ..quadraticBezierTo(
+        size.width * 0.35,
+        size.height * 0.25,
+        size.width * 0.7,
+        size.height * 0.55,
       )
-      ..cubicTo(
-        width * 0.15,
-        height * 0.56,
-        width * 0.08,
-        height * 0.50,
-        0,
-        height * 0.43,
+      ..quadraticBezierTo(
+        size.width * 0.88,
+        size.height * 0.7,
+        size.width,
+        size.height * 0.6,
       )
+      ..lineTo(size.width, 0)
+      ..lineTo(0, 0)
       ..close();
 
-    final paint1 = Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [Color(0x80B8CCFF), Color(0x66D5E1FF), Color(0x33EAF0FF)],
-      ).createShader(Rect.fromLTWH(0, 0, width, height));
-    canvas.drawPath(wave1, paint1);
-
-    final wave2 = Path()
-      ..moveTo(0, height * 0.28)
-      ..cubicTo(
-        width * 0.25,
-        height * 0.42,
-        width * 0.55,
-        height * 0.18,
-        width,
-        height * 0.38,
-      )
-      ..lineTo(width, height * 0.65)
-      ..cubicTo(
-        width * 0.68,
-        height * 0.53,
-        width * 0.35,
-        height * 0.72,
-        0,
-        height * 0.55,
-      )
-      ..close();
-
-    final paint2 = Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topRight,
-        end: Alignment.bottomLeft,
-        colors: [Color(0x3386A8FF), Color(0x1F86A8FF), Color(0x00FFFFFF)],
-      ).createShader(Rect.fromLTWH(0, 0, width, height));
-    canvas.drawPath(wave2, paint2);
-
-    final wave3 = Path()
-      ..moveTo(0, height * 0.48)
-      ..cubicTo(
-        width * 0.30,
-        height * 0.65,
-        width * 0.65,
-        height * 0.38,
-        width,
-        height * 0.55,
-      )
-      ..lineTo(width, height * 0.78)
-      ..cubicTo(
-        width * 0.60,
-        height * 0.67,
-        width * 0.30,
-        height * 0.83,
-        0,
-        height * 0.68,
-      )
-      ..close();
-    canvas.drawPath(wave3, Paint()..color = const Color(0x1486A8FF));
+    canvas.drawPath(path, paint);
   }
 
   @override
-  bool shouldRepaint(covariant _TasksSoftBackgroundPainter oldDelegate) =>
-      false;
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

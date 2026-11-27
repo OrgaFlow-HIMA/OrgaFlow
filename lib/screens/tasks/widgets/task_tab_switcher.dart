@@ -32,7 +32,7 @@ class TaskTabSwitcher extends StatelessWidget {
         return Container(
           height: 46,
           decoration: BoxDecoration(
-            color: AppTheme.lightBlue.withOpacity(0.5),
+            color: AppTheme.lightBlue.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: AppTheme.borderLight),
           ),
@@ -51,7 +51,7 @@ class TaskTabSwitcher extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.primaryBlue.withOpacity(0.25),
+                        color: AppTheme.primaryBlue.withValues(alpha: 0.25),
                         blurRadius: 8,
                         offset: const Offset(0, 3),
                       ),

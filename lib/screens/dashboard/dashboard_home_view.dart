@@ -13,6 +13,8 @@ import '../../services/division_service.dart';
 import '../../services/task_service.dart';
 import '../../widgets/division_name_text.dart';
 import '../announcement/announcement_page.dart';
+import '../approval/approval_page.dart';
+import '../approval/proposal_page.dart';
 import '../attendance/attendance_page.dart';
 import '../notifications/notification_page.dart';
 import '../profile/profile_page.dart';
@@ -120,10 +122,17 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
   Widget build(BuildContext context) {
     final captions = _getCaptions(widget.profile.role);
     final isSekretaris = widget.profile.role == UserRole.sekretaris;
+    final isBendahara = widget.profile.role == UserRole.bendahara;
+    final isKadiv = widget.profile.role == UserRole.kepalaDivisi;
+    final divisionId = widget.profile.divisiId;
 
     final tasksStream = isSekretaris
         ? _taskService.watchAllTasks()
-        : _taskService.watchTasksForRole(widget.profile.role);
+        : isBendahara
+        ? _taskService.watchTasksForBendahara(widget.profile.uid)
+        : (isKadiv && divisionId != null && divisionId.isNotEmpty)
+        ? _taskService.watchTasksForDivision(divisionId)
+        : _taskService.watchTasksForMember(widget.profile.uid);
 
     final agendaStream = _agendaService.watchAgendas();
 
@@ -510,7 +519,7 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
               divisionNameLoader: widget.divisionNameLoader,
               style: const TextStyle(
                 color: AppTheme.textSecondary,
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
             )
@@ -519,7 +528,7 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
               '${role.label} • HIMA Teknik Informatika',
               style: const TextStyle(
                 color: AppTheme.textSecondary,
-                fontSize: 12,
+                fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -539,62 +548,152 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        constraints: const BoxConstraints(minHeight: 132),
-        padding: const EdgeInsets.all(15),
+        // Tinggi dipastikan konsisten
+        height: 135,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: gradient,
           ),
-          borderRadius: BorderRadius.circular(19),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: gradient.first.withOpacity(0.20),
-              blurRadius: 13,
+              color: gradient.first.withOpacity(0.25),
+              blurRadius: 16,
               offset: const Offset(0, 6),
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
+        // Masking agar dekorasi tidak keluar dari sudut melengkung
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Stack(
+            children: [
+              // ===== DEKORASI LINGKARAN =====
+              Positioned(
+                right: -20,
+                top: -20,
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(0.12),
                   ),
                 ),
-                Icon(icon, color: Colors.white, size: 19),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 25,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
               ),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              subtitle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.white70, fontSize: 10),
-            ),
-          ],
+              Positioned(
+                right: 20,
+                bottom: -30,
+                child: Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(0.08),
+                  ),
+                ),
+              ),
+
+              // ===== KONTEN UTAMA =====
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ===== BARIS ATAS: JUDUL & IKON =====
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 1. Teks Judul (di kiri)
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.only(
+                              top: 2,
+                              right: 8,
+                            ), // Beri jarak kanan
+                            child: Text(
+                              title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13.5, // Ukuran yang sudah diperbesar
+                                fontWeight: FontWeight.w700,
+                                height: 1.2,
+                              ),
+                            ),
+                          ),
+                        ),
+                        // 2. Ikon (di kanan)
+                        Container(
+                          padding: const EdgeInsets.all(7),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.3),
+                            ),
+                          ),
+                          child: Icon(icon, color: Colors.white, size: 18),
+                        ),
+                      ],
+                    ),
+
+                    const Spacer(), // Mendorong konten bawah ke dasar
+                    // Baris Bawah: Angka & Subtitle
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                value,
+                                style: const TextStyle(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                  height: 1.0,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                subtitle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.85),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Ikon panah kecil
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            color: Colors.white,
+                            size: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -602,6 +701,9 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
 
   Widget _buildCategories() {
     final isDekan = widget.profile.role == UserRole.dekan;
+    final isKetua =
+        widget.profile.role == UserRole.ketua ||
+        widget.profile.role == UserRole.wakilKetua;
 
     final categories = [
       _CategoryItem(
@@ -611,10 +713,32 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
         onTap: widget.onNavigateToTasks,
       ),
       _CategoryItem(
-        title: 'Agenda',
-        icon: Icons.calendar_month_outlined,
+        title: (isDekan || isKetua) ? 'Persetujuan' : 'Pengajuan',
+        icon: Icons.approval_outlined,
         color: AppTheme.lightBlue,
-        onTap: widget.onNavigateToAgenda,
+        onTap: () {
+          if (isDekan || isKetua) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ApprovalPage(
+                  userProfile: widget.profile,
+                  role: widget.profile.role,
+                ),
+              ),
+            );
+          } else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ProposalPage(
+                  role: widget.profile.role,
+                  userProfile: widget.profile,
+                ),
+              ),
+            );
+          }
+        },
       ),
       _CategoryItem(
         title: 'Pengumuman',
@@ -785,20 +909,22 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Text(
                   task.title,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.textPrimary,
+                    height: 1.35,
                   ),
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
@@ -806,7 +932,7 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  task.isOverdue ? 'Terlambat' : 'Belum Selesai',
+                  task.isOverdue ? 'Terlambat' : task.status.label,
                   style: TextStyle(
                     fontSize: 9,
                     fontWeight: FontWeight.w700,

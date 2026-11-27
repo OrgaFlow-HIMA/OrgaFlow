@@ -1,64 +1,94 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../enums/task_status.dart';
+import '../../../enums/user_role.dart';
 import '../../../models/task.dart';
+import 'task_detail_modal.dart';
 
 class TaskCard extends StatelessWidget {
   final Task task;
-  final bool showRoleBadge;
-  final bool showActionButton;
-  final VoidCallback? onMarkDone;
-  final bool isMarkingDone;
+  final UserRole userRole;
+  final VoidCallback? onDelegate;
+  final VoidCallback? onSubmit;
+  final VoidCallback? onConfirm;
+  final VoidCallback? onTapDetail;
+  final bool isConfirming;
 
   const TaskCard({
     super.key,
     required this.task,
-    this.showRoleBadge = true,
-    this.showActionButton = true,
-    this.onMarkDone,
-    this.isMarkingDone = false,
+    required this.userRole,
+    this.onDelegate,
+    this.onSubmit,
+    this.onConfirm,
+    this.onTapDetail,
+    this.isConfirming = false,
   });
+
+  bool get _isKadiv => userRole == UserRole.kepalaDivisi;
+  bool get _isAnggota => userRole == UserRole.anggota;
+  bool get _isBendahara => userRole == UserRole.bendahara;
+  bool get _isSekretaris => userRole == UserRole.sekretaris;
+
+  bool get _isBendaharaTask =>
+      task.targetRole == 'bendahara' || task.divisiId == 'bendahara';
 
   @override
   Widget build(BuildContext context) {
     final isDone = task.isDone;
     final isOverdue = task.isOverdue;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTapDetail ??
+            () {
+              TaskDetailModal.show(
+                context,
+                task: task,
+                userRole: userRole,
+                onDelegate: onDelegate,
+                onSubmit: onSubmit,
+                onConfirm: onConfirm,
+                isConfirming: isConfirming,
+              );
+            },
         borderRadius: BorderRadius.circular(17),
-        border: Border.all(
-          color: isOverdue
-              ? AppTheme.error.withOpacity(0.3)
-              : AppTheme.borderLight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primaryBlue.withOpacity(0.035),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(15),
+          decoration: BoxDecoration(
+            color: AppTheme.surface,
+            borderRadius: BorderRadius.circular(17),
+            border: Border.all(
+              color: isOverdue
+                  ? AppTheme.error.withValues(alpha: 0.3)
+                  : AppTheme.borderLight,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.primaryBlue.withValues(alpha: 0.035),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
           // ===== BADGE ROW =====
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              if (showRoleBadge)
-                _buildBadge(
-                  label: task.targetRole.label,
-                  bgColor: AppTheme.lightBlue,
-                  fgColor: AppTheme.primaryBlue,
-                )
-              else
-                const SizedBox.shrink(),
-              _buildStatusBadge(isDone: isDone, isOverdue: isOverdue),
+              // Badge Divisi
+              _buildBadge(
+                label:
+                    task.divisiNama ?? 'Divisi ${task.divisiId.toUpperCase()}',
+                bgColor: AppTheme.lightBlue,
+                fgColor: AppTheme.primaryBlue,
+              ),
+              _buildStatusBadge(task.status, isOverdue: isOverdue),
             ],
           ),
           const SizedBox(height: 10),
@@ -91,72 +121,230 @@ class TaskCard extends StatelessWidget {
             ),
           ],
 
+          // ===== PENANGGUNG JAWAB / ANGGOTA YANG DITUGASKAN =====
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Icon(
+                _isBendaharaTask
+                    ? Icons.account_balance_wallet_outlined
+                    : (task.assignedToNama != null
+                          ? Icons.person_outline_rounded
+                          : Icons.person_add_disabled_outlined),
+                size: 14,
+                color: (_isBendaharaTask || task.assignedToNama != null)
+                    ? AppTheme.primaryBlue
+                    : AppTheme.textSecondary,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                _isBendaharaTask
+                    ? 'Penanggung Jawab: Bendahara'
+                    : (task.assignedToNama != null
+                          ? 'Bertugas: ${task.assignedToNama}'
+                          : 'Belum ditugaskan ke anggota'),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: (_isBendaharaTask || task.assignedToNama != null)
+                      ? FontWeight.w600
+                      : FontWeight.w500,
+                  color: (_isBendaharaTask || task.assignedToNama != null)
+                      ? AppTheme.textPrimary
+                      : AppTheme.textSecondary,
+                ),
+              ),
+            ],
+          ),
+
+          // ===== HASIL SUBMISSION (FILE / LINK) JIKA SUDAH ADA =====
+          if (task.submissionUrl != null && task.submissionUrl!.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppTheme.borderLight),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    task.submissionType == 'link'
+                        ? Icons.link_rounded
+                        : Icons.file_present_rounded,
+                    color: AppTheme.primaryBlue,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          task.submissionFileName ??
+                              (task.submissionType == 'link'
+                                  ? 'Tautan Hasil Pengerjaan'
+                                  : 'Lampiran Berkas'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                        if (task.submissionNote != null &&
+                            task.submissionNote!.isNotEmpty)
+                          Text(
+                            'Catatan: ${task.submissionNote}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: AppTheme.textSecondary,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  TextButton.icon(
+                    onPressed: () {
+                      TaskDetailModal.show(
+                        context,
+                        task: task,
+                        userRole: userRole,
+                        onDelegate: onDelegate,
+                        onSubmit: onSubmit,
+                        onConfirm: onConfirm,
+                        isConfirming: isConfirming,
+                      );
+                    },
+                    icon: const Icon(Icons.visibility_rounded, size: 14),
+                    label: const Text('Lihat / Unduh', style: TextStyle(fontSize: 11)),
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
           // ===== INFO TENGGAT & SELESAI =====
           if (task.dueAt != null || (isDone && task.completedAt != null)) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
                 color: AppTheme.background,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
                   if (task.dueAt != null)
-                    _buildInfoRow(
-                      icon: isOverdue
-                          ? Icons.warning_amber_rounded
-                          : Icons.access_time_rounded,
-                      label: 'Tenggat',
-                      value: _formatDate(task.dueAt!),
-                      color: isOverdue ? AppTheme.error : AppTheme.textPrimary,
+                    Expanded(
+                      child: _buildInfoRow(
+                        icon: isOverdue
+                            ? Icons.warning_amber_rounded
+                            : Icons.access_time_rounded,
+                        label: 'Tenggat',
+                        value: _formatDate(task.dueAt!),
+                        color: isOverdue
+                            ? AppTheme.error
+                            : AppTheme.textPrimary,
+                      ),
                     ),
-                  if (isDone && task.completedAt != null && task.dueAt != null)
-                    const SizedBox(height: 6),
                   if (isDone && task.completedAt != null)
-                    _buildInfoRow(
-                      icon: Icons.check_circle_outline_rounded,
-                      label: 'Selesai',
-                      value: _formatDate(task.completedAt!),
-                      color: AppTheme.success,
+                    Expanded(
+                      child: _buildInfoRow(
+                        icon: Icons.check_circle_outline_rounded,
+                        label: 'Selesai',
+                        value: _formatDate(task.completedAt!),
+                        color: AppTheme.success,
+                      ),
                     ),
                 ],
               ),
             ),
           ],
 
-          // ===== TOMBOL AKSI =====
-          if (showActionButton && !isDone && onMarkDone != null) ...[
+          // ===== TOMBOL AKSI SESUAI ROLE & STATUS =====
+          // 1. Tombol Kadiv: Delegasikan Tugas ke Anggota (Hanya untuk tugas divisi)
+          if (_isKadiv &&
+              !_isBendaharaTask &&
+              task.status == TaskStatus.pendingDelegation &&
+              onDelegate != null) ...[
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
-              height: 40,
+              height: 48,
               child: FilledButton.icon(
-                onPressed: isMarkingDone ? null : onMarkDone,
-                icon: isMarkingDone
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.check_circle_outline, size: 16),
+                onPressed: onDelegate,
+                label: const Text(
+                  'Tugaskan ke Anggota Divisi',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppTheme.primaryBlue,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(50),
+                  ),
+                ),
+              ),
+            ),
+          ],
+
+          // 2. Tombol Anggota / Bendahara: Kumpulkan Hasil Tugas
+          if (((_isAnggota && !_isBendaharaTask) ||
+                  (_isBendahara && _isBendaharaTask)) &&
+              task.status == TaskStatus.todo &&
+              onSubmit != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: FilledButton.icon(
+                onPressed: onSubmit,
+                label: const Text(
+                  'Kumpulkan Hasil Tugas',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppTheme.primaryBlue,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(50),
+                  ),
+                ),
+              ),
+            ),
+          ],
+
+          // 3. Tombol Verifikasi/Konfirmasi:
+          // - Kadiv untuk tugas divisi yang telah dikumpulkan anggota
+          // - Sekretaris untuk tugas Bendahara yang telah dikumpulkan bendahara
+          if (((_isKadiv && !_isBendaharaTask) ||
+                  (_isSekretaris && _isBendaharaTask)) &&
+              task.status == TaskStatus.submitted &&
+              onConfirm != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: FilledButton.icon(
+                onPressed: isConfirming ? null : onConfirm,
                 label: Text(
-                  isMarkingDone ? 'Menyimpan...' : 'Tandai Selesai',
+                  isConfirming ? 'Menyetujui...' : 'Periksa & Setujui Tugas',
                   style: const TextStyle(
-                    fontSize: 12,
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppTheme.primaryBlue,
-                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(50),
                   ),
                 ),
               ),
@@ -164,10 +352,10 @@ class TaskCard extends StatelessWidget {
           ],
         ],
       ),
-    );
+    ),
+  ),
+);
   }
-
-  // ===== BADGE UMUM =====
 
   Widget _buildBadge({
     required String label,
@@ -191,31 +379,34 @@ class TaskCard extends StatelessWidget {
     );
   }
 
-  // ===== BADGE STATUS =====
-
-  Widget _buildStatusBadge({required bool isDone, required bool isOverdue}) {
-    if (isDone) {
-      return _buildBadge(
-        label: 'Selesai',
-        bgColor: AppTheme.successBg,
-        fgColor: AppTheme.success,
-      );
+  Widget _buildStatusBadge(TaskStatus status, {required bool isOverdue}) {
+    switch (status) {
+      case TaskStatus.done:
+        return _buildBadge(
+          label: 'Selesai',
+          bgColor: AppTheme.successBg,
+          fgColor: AppTheme.success,
+        );
+      case TaskStatus.submitted:
+        return _buildBadge(
+          label: 'Menunggu Konfirmasi',
+          bgColor: const Color(0xFFFEF3C7),
+          fgColor: const Color(0xFFB45309),
+        );
+      case TaskStatus.pendingDelegation:
+        return _buildBadge(
+          label: 'Perlu Didelegasikan',
+          bgColor: const Color(0xFFE0E7FF),
+          fgColor: const Color(0xFF4338CA),
+        );
+      case TaskStatus.todo:
+        return _buildBadge(
+          label: isOverdue ? 'Terlambat' : 'Sedang Dikerjakan',
+          bgColor: isOverdue ? AppTheme.errorBg : AppTheme.warningBg,
+          fgColor: isOverdue ? AppTheme.error : AppTheme.warning,
+        );
     }
-    if (isOverdue) {
-      return _buildBadge(
-        label: 'Terlambat',
-        bgColor: AppTheme.errorBg,
-        fgColor: AppTheme.error,
-      );
-    }
-    return _buildBadge(
-      label: 'Belum Selesai',
-      bgColor: AppTheme.warningBg,
-      fgColor: AppTheme.warning,
-    );
   }
-
-  // ===== INFO ROW DALAM KOTAK =====
 
   Widget _buildInfoRow({
     required IconData icon,
@@ -224,37 +415,27 @@ class TaskCard extends StatelessWidget {
     required Color color,
   }) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: color),
-        const SizedBox(width: 6),
-        Text(
-          '$label:',
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w500,
-            color: AppTheme.textSecondary,
-          ),
-        ),
+        Icon(icon, size: 13, color: color),
         const SizedBox(width: 4),
-        Expanded(
-          child: Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: color,
-            ),
+        Text(
+          '$label: ',
+          style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: color,
           ),
         ),
       ],
     );
   }
 
-  // ===== FORMAT TANGGAL =====
-
-  String _formatDate(DateTime date) {
+  String _formatDate(DateTime dt) {
     const months = [
       'Jan',
       'Feb',
@@ -269,11 +450,6 @@ class TaskCard extends StatelessWidget {
       'Nov',
       'Des',
     ];
-    final day = date.day.toString().padLeft(2, '0');
-    final month = months[date.month - 1];
-    final year = date.year;
-    final hour = date.hour.toString().padLeft(2, '0');
-    final minute = date.minute.toString().padLeft(2, '0');
-    return '$day $month $year • $hour:$minute';
+    return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
   }
 }

@@ -86,6 +86,7 @@ class AnnouncementService {
           message: '$kategori • ${deskripsi.trim().isNotEmpty ? deskripsi.trim() : 'Buka untuk melihat detail lengkap.'}',
           type: NotificationType.general,
           targetType: NotificationTargetType.broadcast,
+          referenceId: docRef.id,
           createdBy: createdBy.trim(),
         );
 
@@ -96,6 +97,7 @@ class AnnouncementService {
           type: NotificationType.general,
           targetType: NotificationTargetType.user,
           targetUserId: createdBy.trim(),
+          referenceId: docRef.id,
           createdBy: createdBy.trim(),
         );
       } catch (notifErr) {

@@ -23,6 +23,18 @@ class AgendaService {
   CollectionReference get _agendas =>
       _firestore.collection(AppConstants.agendasCollection);
 
+  /// Mengambil satu data agenda berdasarkan ID
+  Future<Agenda?> getAgendaById(String agendaId) async {
+    try {
+      final doc = await _agendas.doc(agendaId).get();
+      if (!doc.exists || doc.data() == null) return null;
+      return Agenda.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+    } catch (e) {
+      debugPrint('[OrgaFlow AgendaService] Gagal getAgendaById: $e');
+      return null;
+    }
+  }
+
   /// Stream real-time seluruh agenda, diurutkan dari yang paling dekat
   Stream<List<Agenda>> watchAgendas() {
     return _agendas.snapshots().map((snapshot) {
@@ -95,6 +107,7 @@ class AgendaService {
           message: 'Agenda "$cleanJudul" telah dijadwalkan pada ${tanggalWaktu.day}/${tanggalWaktu.month}/${tanggalWaktu.year}.',
           type: NotificationType.agenda,
           targetType: NotificationTargetType.broadcast,
+          referenceId: docRef.id,
           createdBy: createdBy.trim(),
         );
 
@@ -105,6 +118,7 @@ class AgendaService {
           type: NotificationType.agenda,
           targetType: NotificationTargetType.user,
           targetUserId: createdBy.trim(),
+          referenceId: docRef.id,
           createdBy: createdBy.trim(),
         );
       } catch (notifErr) {

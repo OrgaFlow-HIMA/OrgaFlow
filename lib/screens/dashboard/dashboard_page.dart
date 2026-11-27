@@ -6,7 +6,8 @@ import '../../models/user_profile.dart';
 import '../../services/auth_service.dart';
 import '../../services/division_service.dart';
 import '../agenda/agenda_page.dart';
-import '../approval/dekan_approval_page.dart';
+import '../approval/approval_page.dart';
+import '../approval/proposal_page.dart';
 import '../finance/finance_page.dart';
 import '../tasks/tasks_page.dart';
 import '../users/user_approval_page.dart';
@@ -34,9 +35,22 @@ class _DashboardPageState extends State<DashboardPage> {
 
   List<DashboardNavItem> get _navItems {
     final role = widget.profile.role;
+    final canAccessTasks =
+        role != UserRole.dekan &&
+        role != UserRole.ketua &&
+        role != UserRole.wakilKetua;
+
     final items = <DashboardNavItem>[
       const DashboardNavItem(label: 'Beranda', icon: Icons.home_outlined),
-      const DashboardNavItem(label: 'Tugas', icon: Icons.assignment_outlined),
+    ];
+
+    if (canAccessTasks) {
+      items.add(
+        const DashboardNavItem(label: 'Tugas', icon: Icons.assignment_outlined),
+      );
+    }
+
+    items.addAll([
       const DashboardNavItem(
         label: 'Agenda',
         icon: Icons.event_available_outlined,
@@ -45,18 +59,18 @@ class _DashboardPageState extends State<DashboardPage> {
         label: 'Keuangan',
         icon: Icons.account_balance_wallet_outlined,
       ),
-    ];
+    ]);
 
-    if (role == UserRole.dekan) {
+    if (role == UserRole.dekan ||
+        role == UserRole.ketua ||
+        role == UserRole.wakilKetua) {
       items.add(
         const DashboardNavItem(
           label: 'Persetujuan',
           icon: Icons.approval_outlined,
         ),
       );
-    }
-
-    if (role == UserRole.sekretaris) {
+    } else if (role == UserRole.sekretaris) {
       items.add(
         const DashboardNavItem(
           label: 'Pengguna',
@@ -113,14 +127,25 @@ class _DashboardPageState extends State<DashboardPage> {
           onNavigateToFinance: () => _navigateToLabel('Keuangan'),
         );
       case 'Tugas':
-        return TasksPage(role: widget.profile.role);
+        return TasksPage(
+          role: widget.profile.role,
+          userProfile: widget.profile,
+        );
       case 'Agenda':
         return AgendaPage(
           userName: widget.profile.nama,
           role: widget.profile.role,
         );
       case 'Persetujuan':
-        return const DekanApprovalPage();
+        return ApprovalPage(
+          userProfile: widget.profile,
+          role: widget.profile.role,
+        );
+      case 'Pengajuan':
+        return ProposalPage(
+          role: widget.profile.role,
+          userProfile: widget.profile,
+        );
       case 'Keuangan':
         return FinancePage(
           userRole: widget.profile.role,

@@ -12,6 +12,7 @@ class AppConstants {
   static const String agendasCollection = 'agenda';
   static const String financeCollection = 'finance_transactions';
   static const String financePaymentsSubcollection = 'payments';
+  static const String proposalsCollection = 'proposals';
 
   // Account Statuses
   static const String statusActive = 'aktif';

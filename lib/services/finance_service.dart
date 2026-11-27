@@ -18,6 +18,34 @@ class FinanceService {
   CollectionReference get _financeRef =>
       _firestore.collection(AppConstants.financeCollection);
 
+  /// Mengambil satu transaksi berdasarkan ID
+  Future<FinanceTransaction?> getTransactionById(String txId) async {
+    try {
+      final doc = await _financeRef.doc(txId).get();
+      if (!doc.exists || doc.data() == null) return null;
+      return FinanceTransaction.fromFirestore(doc);
+    } catch (e) {
+      debugPrint('[OrgaFlow FinanceService ERROR] getTransactionById: $e');
+      return null;
+    }
+  }
+
+  /// Mengambil data pembayaran anggota pada transaksi kas
+  Future<FinancePayment?> getUserPayment(String txId, String userUid) async {
+    try {
+      final doc = await _financeRef
+          .doc(txId)
+          .collection(AppConstants.financePaymentsSubcollection)
+          .doc(userUid)
+          .get();
+      if (!doc.exists || doc.data() == null) return null;
+      return FinancePayment.fromFirestore(doc);
+    } catch (e) {
+      debugPrint('[OrgaFlow FinanceService ERROR] getUserPayment: $e');
+      return null;
+    }
+  }
+
   /// Stream semua transaksi kas terurut dari yang terbaru
   Stream<List<FinanceTransaction>> watchTransactions() {
     return _financeRef
@@ -115,6 +143,7 @@ class FinanceService {
           message: 'Tagihan kas "$cleanJudul" sebesar Rp $nominal telah diterbitkan.',
           type: NotificationType.finance,
           targetType: NotificationTargetType.broadcast,
+          referenceId: docRef.id,
           createdBy: senderUid,
         );
       } else {
@@ -125,6 +154,7 @@ class FinanceService {
           type: NotificationType.finance,
           targetType: NotificationTargetType.role,
           targetRole: 'ketua',
+          referenceId: docRef.id,
           createdBy: senderUid,
         );
       }
@@ -137,6 +167,7 @@ class FinanceService {
           type: NotificationType.finance,
           targetType: NotificationTargetType.user,
           targetUserId: senderUid,
+          referenceId: docRef.id,
           createdBy: senderUid,
         );
       }
@@ -159,6 +190,27 @@ class FinanceService {
       'dikonfirmasi_pada': Timestamp.fromDate(DateTime.now()),
       'updated_at': Timestamp.fromDate(DateTime.now()),
     });
+
+    try {
+      final doc = await _financeRef.doc(txId).get();
+      final data = doc.data() as Map<String, dynamic>? ?? {};
+      final String judul = data['judul'] as String? ?? 'Transaksi Kas';
+      final String createdBy = data['created_by'] as String? ?? '';
+      if (createdBy.isNotEmpty) {
+        final notifService = NotificationService(firestore: _firestore);
+        await notifService.createNotification(
+          title: 'Transaksi Kas Dikonfirmasi',
+          message: 'Transaksi "$judul" telah disetujui dan dikonfirmasi oleh Ketua.',
+          type: NotificationType.finance,
+          targetType: NotificationTargetType.user,
+          targetUserId: createdBy,
+          referenceId: txId,
+          createdBy: user?.uid ?? '',
+        );
+      }
+    } catch (e) {
+      debugPrint('[OrgaFlow FinanceService WARNING] Notif confirm error: $e');
+    }
   }
 
   /// Menghapus transaksi kas (Oleh Bendahara)
@@ -195,6 +247,25 @@ class FinanceService {
       'catatan_anggota': catatanAnggota ?? '',
       'paid_at': Timestamp.fromDate(DateTime.now()),
     }, SetOptions(merge: true));
+
+    // Notifikasi ke Bendahara bahwa ada pembayaran baru menunggu verifikasi
+    try {
+      final doc = await _financeRef.doc(txId).get();
+      final data = doc.data() as Map<String, dynamic>? ?? {};
+      final String judul = data['judul'] as String? ?? 'Iuran Kas';
+      final notifService = NotificationService(firestore: _firestore);
+      await notifService.createNotification(
+        title: 'Bukti Pembayaran Kas Masuk',
+        message: '$userNama telah mengirim bukti pembayaran untuk "$judul". Silakan verifikasi.',
+        type: NotificationType.finance,
+        targetType: NotificationTargetType.role,
+        targetRole: 'bendahara',
+        referenceId: txId,
+        createdBy: userUid,
+      );
+    } catch (e) {
+      debugPrint('[OrgaFlow FinanceService WARNING] Notif submitPayment error: $e');
+    }
   }
 
   /// Verifikasi pembayaran kas anggota (Oleh Bendahara: 'lunas' atau 'ditolak')
@@ -216,5 +287,27 @@ class FinanceService {
       'verified_by': user?.uid,
       'verified_at': Timestamp.fromDate(DateTime.now()),
     });
+
+    // Notifikasi ke Anggota mengenai hasil verifikasi pembayaran
+    try {
+      final doc = await _financeRef.doc(txId).get();
+      final data = doc.data() as Map<String, dynamic>? ?? {};
+      final String judul = data['judul'] as String? ?? 'Iuran Kas';
+      final bool isLunas = status == 'lunas';
+      final notifService = NotificationService(firestore: _firestore);
+      await notifService.createNotification(
+        title: isLunas ? 'Pembayaran Kas Diverifikasi' : 'Pembayaran Kas Ditolak',
+        message: isLunas
+            ? 'Pembayaran kas Anda untuk "$judul" telah dinyatakan lunas.'
+            : 'Pembayaran kas Anda untuk "$judul" ditolak. ${catatanBendahara != null && catatanBendahara.isNotEmpty ? 'Catatan: $catatanBendahara' : 'Silakan periksa kembali bukti bayar.'}',
+        type: NotificationType.finance,
+        targetType: NotificationTargetType.user,
+        targetUserId: userUid,
+        referenceId: txId,
+        createdBy: user?.uid ?? '',
+      );
+    } catch (e) {
+      debugPrint('[OrgaFlow FinanceService WARNING] Notif verifyPayment error: $e');
+    }
   }
 }

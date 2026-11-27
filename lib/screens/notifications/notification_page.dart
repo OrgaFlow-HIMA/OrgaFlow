@@ -3,7 +3,19 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../../enums/user_role.dart';
 import '../../models/app_notification.dart';
+import '../../models/user_profile.dart';
 import '../../services/notification_service.dart';
+import '../../services/proposal_service.dart';
+import '../../services/task_service.dart';
+import '../../services/finance_service.dart';
+import '../../services/user_service.dart';
+import '../approval/approval_page.dart';
+import '../approval/proposal_page.dart';
+import '../approval/widgets/proposal_detail_modal.dart';
+import '../finance/finance_page.dart';
+import '../finance/widgets/qris_payment_sheet.dart';
+import '../finance/widgets/verify_payments_modal.dart';
+import '../tasks/widgets/task_detail_modal.dart';
 
 class NotificationPage extends StatefulWidget {
   final String currentUserId;
@@ -23,7 +35,12 @@ class NotificationPage extends StatefulWidget {
 
 class _NotificationPageState extends State<NotificationPage> {
   late final NotificationService _notificationService;
+  final TaskService _taskService = TaskService();
+  final FinanceService _financeService = FinanceService();
+  final ProposalService _proposalService = ProposalService();
+  final UserService _userService = UserService();
 
+  UserProfile? _cachedProfile;
   bool _isSelecting = false;
   final Set<String> _selectedIds = {};
 
@@ -31,6 +48,16 @@ class _NotificationPageState extends State<NotificationPage> {
   void initState() {
     super.initState();
     _notificationService = widget.notificationService ?? NotificationService();
+    _loadUserProfile();
+  }
+
+  Future<void> _loadUserProfile() async {
+    final profile = await _userService.getUserProfile(widget.currentUserId);
+    if (mounted && profile != null) {
+      setState(() {
+        _cachedProfile = profile;
+      });
+    }
   }
 
   // =========================================================
@@ -568,6 +595,11 @@ class _NotificationPageState extends State<NotificationPage> {
         iconColor = const Color(0xFFB45309);
         iconBg = const Color(0xFFFEF3C7);
         break;
+      case NotificationType.proposal:
+        icon = Icons.approval_outlined;
+        iconColor = const Color(0xFF7C3AED);
+        iconBg = const Color(0xFFF3E8FF);
+        break;
       case NotificationType.general:
         icon = Icons.notifications_none_rounded;
         iconColor = const Color(0xFF6B7280);
@@ -586,6 +618,7 @@ class _NotificationPageState extends State<NotificationPage> {
               userId: widget.currentUserId,
             );
           }
+          _showNotificationDetailModal(notif);
         }
       },
       onLongPress: () {
@@ -823,6 +856,411 @@ class _NotificationPageState extends State<NotificationPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // =========================================================
+  // MODAL DETAIL NOTIFIKASI & REDIRECT KE EVENT
+  // =========================================================
+
+  void _showNotificationDetailModal(AppNotification notif) {
+    IconData icon;
+    Color iconColor;
+    Color iconBg;
+    String typeLabel;
+
+    switch (notif.type) {
+      case NotificationType.task:
+        icon = Icons.assignment_outlined;
+        iconColor = AppTheme.primaryBlue;
+        iconBg = AppTheme.lightBlue;
+        typeLabel = 'Tugas Organisasi';
+        break;
+      case NotificationType.agenda:
+        icon = Icons.calendar_month_outlined;
+        iconColor = const Color(0xFF15803D);
+        iconBg = const Color(0xFFDCFCE7);
+        typeLabel = 'Agenda & Kegiatan';
+        break;
+      case NotificationType.finance:
+        icon = Icons.account_balance_wallet_outlined;
+        iconColor = const Color(0xFFB45309);
+        iconBg = const Color(0xFFFEF3C7);
+        typeLabel = 'Keuangan & Kas';
+        break;
+      case NotificationType.proposal:
+        icon = Icons.approval_outlined;
+        iconColor = const Color(0xFF7C3AED);
+        iconBg = const Color(0xFFF3E8FF);
+        typeLabel = 'Pengajuan & Persetujuan';
+        break;
+      case NotificationType.general:
+        icon = Icons.notifications_none_rounded;
+        iconColor = const Color(0xFF6B7280);
+        iconBg = const Color(0xFFF3F4F6);
+        typeLabel = 'Pemberitahuan';
+        break;
+    }
+
+    final hasReference =
+        notif.referenceId != null && notif.referenceId!.isNotEmpty;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(22, 12, 22, 28),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            boxShadow: [
+              BoxShadow(
+                color: Color(0x1A000000),
+                blurRadius: 20,
+                offset: Offset(0, -6),
+              ),
+            ],
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Handle bar
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 5,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: AppTheme.borderLight,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+
+                // Icon + Kategori
+                Row(
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: iconBg,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(icon, color: iconColor, size: 24),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            typeLabel,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: iconColor,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _formatTimestamp(notif.createdAt),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: AppTheme.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                      onPressed: () => Navigator.pop(ctx),
+                      style: IconButton.styleFrom(
+                        backgroundColor: AppTheme.background,
+                        foregroundColor: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+
+                // Judul Notifikasi
+                Text(
+                  notif.title,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textPrimary,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Pesan lengkap notifikasi
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.background,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppTheme.borderLight),
+                  ),
+                  child: Text(
+                    notif.message,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      height: 1.5,
+                      color: Color(0xFF334155),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 22),
+
+                // Tombol Aksi: Lihat Selengkapnya / Redirect
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: AppTheme.borderLight),
+                          foregroundColor: AppTheme.textSecondary,
+                          minimumSize: const Size.fromHeight(48),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(50),
+                          ),
+                          textStyle: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        child: const Text('Tutup'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      flex: 2,
+                      child: FilledButton.icon(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _handleNotificationRedirect(notif);
+                        },
+                        icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                        label: Text(
+                          hasReference
+                              ? 'Buka Detail Acara'
+                              : 'Lihat Halaman Terkait',
+                        ),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: iconColor,
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size.fromHeight(48),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(50),
+                          ),
+                          textStyle: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // =========================================================
+  // LOGIKA NAVIGASI / REDIRECT KE EVENT ASLI
+  // =========================================================
+
+  Future<void> _handleNotificationRedirect(AppNotification notif) async {
+    final refId = notif.referenceId;
+    final messenger = ScaffoldMessenger.of(context);
+
+    // 1. TUGAS
+    if (notif.type == NotificationType.task) {
+      if (refId != null && refId.isNotEmpty) {
+        // Tampilkan loading dialog singkat saat mengambil data
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => const Center(
+            child: CircularProgressIndicator(color: AppTheme.primaryBlue),
+          ),
+        );
+
+        final task = await _taskService.getTaskById(refId);
+        if (mounted) Navigator.pop(context); // Tutup loading
+
+        if (!mounted) return;
+
+        if (task != null) {
+          TaskDetailModal.show(context, task: task, userRole: widget.userRole);
+          return;
+        }
+      }
+
+      // Fallback jika task tidak ditemukan atau refId kosong: buka dashboard / infokan
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Membuka menu Tugas organisasi.'),
+          backgroundColor: AppTheme.primaryBlue,
+        ),
+      );
+      Navigator.maybePop(context);
+      return;
+    }
+
+    // 2. KEUANGAN / KAS
+    if (notif.type == NotificationType.finance) {
+      if (refId != null && refId.isNotEmpty) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => const Center(
+            child: CircularProgressIndicator(color: AppTheme.primaryBlue),
+          ),
+        );
+
+        final tx = await _financeService.getTransactionById(refId);
+        if (mounted) Navigator.pop(context);
+
+        if (!mounted) return;
+
+        if (tx != null) {
+          // Jika pengguna adalah Bendahara, buka modal verifikasi / detail tagihan
+          if (widget.userRole == UserRole.bendahara) {
+            VerifyPaymentsModal.show(context, transaction: tx);
+            return;
+          }
+
+          // Jika anggota/kadiv dan ada tagihan kas, buka modal pembayaran QRIS
+          if (tx.isTagihanAnggota) {
+            final existingPayment = await _financeService.getUserPayment(
+              refId,
+              widget.currentUserId,
+            );
+            if (!mounted) return;
+
+            QrisPaymentSheet.show(
+              context,
+              transaction: tx,
+              existingPayment: existingPayment,
+              currentUid: widget.currentUserId,
+              currentNama: _cachedProfile?.nama ?? 'Anggota',
+              currentNim: _cachedProfile?.nim,
+              currentDivisiId: _cachedProfile?.divisiId,
+            );
+            return;
+          }
+        }
+      }
+
+      // Fallback: Arahkan ke halaman keuangan
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => FinancePage(
+            userRole: widget.userRole,
+            userName: _cachedProfile?.nama ?? 'Pengurus',
+          ),
+        ),
+      );
+      return;
+    }
+
+    // 3. PENGAJUAN / PERSETUJUAN (PROPOSAL / SURAT / LPJ)
+    if (notif.type == NotificationType.proposal) {
+      final isReviewer =
+          widget.userRole == UserRole.dekan ||
+          widget.userRole == UserRole.ketua ||
+          widget.userRole == UserRole.wakilKetua;
+
+      if (refId != null && refId.isNotEmpty) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => const Center(
+            child: CircularProgressIndicator(color: AppTheme.primaryBlue),
+          ),
+        );
+
+        final proposal = await _proposalService.getProposalById(refId);
+        if (mounted) Navigator.pop(context);
+
+        if (!mounted) return;
+
+        if (proposal != null) {
+          ProposalDetailModal.show(
+            context,
+            proposal: proposal,
+            userRole: widget.userRole,
+            currentUid: widget.currentUserId,
+            currentUserName: _cachedProfile?.nama ?? 'Pimpinan',
+          );
+          return;
+        }
+      }
+
+      // Fallback: Navigasi ke halaman Persetujuan (Dekan/Ketua) atau Pengajuan (Pengurus)
+      if (isReviewer) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ApprovalPage(
+              userProfile: _cachedProfile,
+              role: widget.userRole,
+            ),
+          ),
+        );
+      } else {
+        if (_cachedProfile != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ProposalPage(
+                role: widget.userRole,
+                userProfile: _cachedProfile!,
+              ),
+            ),
+          );
+        }
+      }
+      return;
+    }
+
+    // 4. AGENDA / UMUM
+    if (notif.type == NotificationType.agenda) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Membuka detail Agenda organisasi.'),
+          backgroundColor: Color(0xFF15803D),
+        ),
+      );
+      Navigator.maybePop(context);
+      return;
+    }
+
+    // GENERAL NOTIFICATION
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(notif.title),
+        backgroundColor: AppTheme.primaryBlue,
       ),
     );
   }
