@@ -7,6 +7,9 @@ import '../../enums/user_role.dart';
 import '../../models/agenda.dart';
 import '../../models/task.dart';
 import '../../models/user_profile.dart';
+import '../../models/proposal.dart';
+import '../../services/division_monitoring_service.dart';
+import '../../services/proposal_service.dart';
 import '../../services/agenda_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/division_service.dart';
@@ -16,6 +19,7 @@ import '../announcement/announcement_page.dart';
 import '../approval/approval_page.dart';
 import '../approval/proposal_page.dart';
 import '../attendance/attendance_page.dart';
+import '../monitoring/division_monitoring_page.dart';
 import '../notifications/notification_page.dart';
 import '../profile/profile_page.dart';
 import '../../services/notification_service.dart';
@@ -37,6 +41,8 @@ class DashboardHomeView extends StatefulWidget {
   final AuthService? authService;
   final DivisionNameLoader? divisionNameLoader;
   final VoidCallback? onNavigateToTasks;
+  final VoidCallback? onNavigateToMonitoring;
+  final VoidCallback? onNavigateToApproval;
   final VoidCallback? onNavigateToAgenda;
   final VoidCallback? onNavigateToFinance;
   final VoidCallback? onNavigateToAdministration;
@@ -47,6 +53,8 @@ class DashboardHomeView extends StatefulWidget {
     this.authService,
     this.divisionNameLoader,
     this.onNavigateToTasks,
+    this.onNavigateToMonitoring,
+    this.onNavigateToApproval,
     this.onNavigateToAgenda,
     this.onNavigateToFinance,
     this.onNavigateToAdministration,
@@ -59,31 +67,34 @@ class DashboardHomeView extends StatefulWidget {
 class _DashboardHomeViewState extends State<DashboardHomeView> {
   final TaskService _taskService = TaskService();
   final AgendaService _agendaService = AgendaService();
+  final ProposalService _proposalService = ProposalService();
+  final DivisionMonitoringService _monitoringService =
+      DivisionMonitoringService();
 
   DashboardCaptions _getCaptions(UserRole role) {
     switch (role) {
       case UserRole.dekan:
         return const DashboardCaptions(
           greetingSubtitle: 'Kelola kebijakan dan persetujuan tingkat dekanat',
-          taskSectionTitle: 'Persetujuan & Tugas Dekanat',
+          taskSectionTitle: 'Daftar Persetujuan Terbaru',
           noteFocus: 'Fokus: Persetujuan proposal berkas dan pengawasan capaian strategis himpunan.',
         );
       case UserRole.ketua:
         return const DashboardCaptions(
           greetingSubtitle: 'Koordinasi dan pantau seluruh alur organisasi',
-          taskSectionTitle: 'Tugas & Persetujuan',
+          taskSectionTitle: 'Daftar Persetujuan Terbaru',
           noteFocus: 'Fokus: Koordinasi internal pengurus inti dan pengawasan berkala program kerja.',
         );
       case UserRole.wakilKetua:
         return const DashboardCaptions(
           greetingSubtitle: 'Pantau kinerja divisi dan progres operasional',
-          taskSectionTitle: 'Tugas & Pemantauan Organisasi',
+          taskSectionTitle: 'Monitoring Performa Divisi',
           noteFocus: 'Fokus: Evaluasi kinerja divisi dan asistensi ketua dalam pelaksanaan proker.',
         );
       case UserRole.sekretaris:
         return const DashboardCaptions(
           greetingSubtitle: 'Kelola administrasi, tugas, dan agenda organisasi',
-          taskSectionTitle: 'Tugas Organisasi Berjalan',
+          taskSectionTitle: 'Tugas yang Dibuat / Berjalan',
           noteFocus: 'Fokus: Pendelegasian tugas antar-divisi dan pencatatan jadwal agenda rapat.',
         );
       case UserRole.bendahara:
@@ -121,9 +132,13 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
   @override
   Widget build(BuildContext context) {
     final captions = _getCaptions(widget.profile.role);
-    final isSekretaris = widget.profile.role == UserRole.sekretaris;
-    final isBendahara = widget.profile.role == UserRole.bendahara;
-    final isKadiv = widget.profile.role == UserRole.kepalaDivisi;
+    final role = widget.profile.role;
+    final isDekan = role == UserRole.dekan;
+    final isKetua = role == UserRole.ketua;
+    final isWakilKetua = role == UserRole.wakilKetua;
+    final isSekretaris = role == UserRole.sekretaris;
+    final isBendahara = role == UserRole.bendahara;
+    final isKadiv = role == UserRole.kepalaDivisi;
     final divisionId = widget.profile.divisiId;
 
     final tasksStream = isSekretaris
@@ -184,61 +199,221 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
                         const SizedBox(height: 24),
 
                         // Ringkasan real-time Firestore
-                        StreamBuilder<List<Task>>(
-                          stream: tasksStream,
-                          builder: (context, taskSnap) {
-                            final tasks = taskSnap.data ?? [];
-                            final todoTasks = tasks
-                                .where((task) => !task.isDone)
-                                .toList();
+                        if (isDekan || isKetua)
+                          StreamBuilder<List<Proposal>>(
+                            stream: _proposalService.watchAllProposals(),
+                            builder: (context, propSnap) {
+                              final proposals = propSnap.data ?? [];
+                              final pendingProposals = proposals
+                                  .where(
+                                    (p) => p.status == ProposalStatus.menunggu,
+                                  )
+                                  .toList();
 
-                            return StreamBuilder<List<Agenda>>(
-                              stream: agendaStream,
-                              builder: (context, agendaSnap) {
-                                final agendas = agendaSnap.data ?? [];
-                                final upcomingAgendas = agendas
-                                    .where((agenda) => !agenda.isPast)
-                                    .toList();
+                              return StreamBuilder<List<Agenda>>(
+                                stream: agendaStream,
+                                builder: (context, agendaSnap) {
+                                  final agendas = agendaSnap.data ?? [];
+                                  final upcomingAgendas = agendas
+                                      .where((agenda) => !agenda.isPast)
+                                      .toList();
 
-                                return Row(
-                                  children: [
-                                    Expanded(
-                                      child: _buildSummaryCard(
-                                        title: 'Tugas Menunggu',
-                                        value: '${todoTasks.length}',
-                                        subtitle: todoTasks.isEmpty
-                                            ? 'Semua terselesaikan'
-                                            : 'Perlu dikerjakan',
-                                        icon: Icons.assignment_outlined,
-                                        gradient: const [
-                                          AppTheme.primaryBlue,
-                                          AppTheme.accentBlue,
-                                        ],
-                                        onTap: widget.onNavigateToTasks,
+                                  return Row(
+                                    children: [
+                                      Expanded(
+                                        child: _buildSummaryCard(
+                                          title: 'Perlu Persetujuan',
+                                          value: '${pendingProposals.length}',
+                                          subtitle: pendingProposals.isEmpty
+                                              ? 'Semua telah ditinjau'
+                                              : 'Menunggu respon Anda',
+                                          icon: Icons.approval_outlined,
+                                          gradient: const [
+                                            AppTheme.primaryBlue,
+                                            AppTheme.accentBlue,
+                                          ],
+                                          onTap:
+                                              widget.onNavigateToApproval ??
+                                              () {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (_) =>
+                                                        ApprovalPage(
+                                                          userProfile:
+                                                              widget.profile,
+                                                          role: widget
+                                                              .profile
+                                                              .role,
+                                                        ),
+                                                  ),
+                                                );
+                                              },
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: _buildSummaryCard(
-                                        title: 'Agenda Mendatang',
-                                        value: '${upcomingAgendas.length}',
-                                        subtitle: upcomingAgendas.isEmpty
-                                            ? 'Tidak ada jadwal'
-                                            : 'Jadwal aktif himpunan',
-                                        icon: Icons.event_available_outlined,
-                                        gradient: const [
-                                          AppTheme.primaryBlue,
-                                          AppTheme.accentBlue,
-                                        ],
-                                        onTap: widget.onNavigateToAgenda,
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: _buildSummaryCard(
+                                          title: 'Agenda Mendatang',
+                                          value: '${upcomingAgendas.length}',
+                                          subtitle: upcomingAgendas.isEmpty
+                                              ? 'Tidak ada jadwal'
+                                              : 'Jadwal aktif himpunan',
+                                          icon: Icons.event_available_outlined,
+                                          gradient: const [
+                                            AppTheme.primaryBlue,
+                                            AppTheme.accentBlue,
+                                          ],
+                                          onTap: widget.onNavigateToAgenda,
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                );
-                              },
-                            );
-                          },
-                        ),
+                                    ],
+                                  );
+                                },
+                              );
+                            },
+                          )
+                        else if (isWakilKetua)
+                          StreamBuilder<List<DivisionPerformance>>(
+                            stream: _monitoringService
+                                .watchAllDivisionsPerformance(),
+                            builder: (context, monSnap) {
+                              final divisions = monSnap.data ?? [];
+                              int totalTasks = 0;
+                              int completedTasks = 0;
+                              for (final d in divisions) {
+                                totalTasks += d.totalTasks;
+                                completedTasks += d.completedTasks;
+                              }
+                              final rate = totalTasks > 0
+                                  ? ((completedTasks / totalTasks) * 100)
+                                        .round()
+                                  : 0;
+
+                              return StreamBuilder<List<Agenda>>(
+                                stream: agendaStream,
+                                builder: (context, agendaSnap) {
+                                  final agendas = agendaSnap.data ?? [];
+                                  final upcomingAgendas = agendas
+                                      .where((agenda) => !agenda.isPast)
+                                      .toList();
+
+                                  return Row(
+                                    children: [
+                                      Expanded(
+                                        child: _buildSummaryCard(
+                                          title: 'Kinerja Divisi',
+                                          value: '$rate%',
+                                          subtitle:
+                                              '${divisions.length} Divisi terpantau',
+                                          icon: Icons.analytics_outlined,
+                                          gradient: const [
+                                            AppTheme.primaryBlue,
+                                            AppTheme.accentBlue,
+                                          ],
+                                          onTap:
+                                              widget.onNavigateToMonitoring ??
+                                              () {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (_) =>
+                                                        DivisionMonitoringPage(
+                                                          userProfile:
+                                                              widget.profile,
+                                                          role: widget
+                                                              .profile
+                                                              .role,
+                                                        ),
+                                                  ),
+                                                );
+                                              },
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: _buildSummaryCard(
+                                          title: 'Agenda Mendatang',
+                                          value: '${upcomingAgendas.length}',
+                                          subtitle: upcomingAgendas.isEmpty
+                                              ? 'Tidak ada jadwal'
+                                              : 'Jadwal aktif himpunan',
+                                          icon: Icons.event_available_outlined,
+                                          gradient: const [
+                                            AppTheme.primaryBlue,
+                                            AppTheme.accentBlue,
+                                          ],
+                                          onTap: widget.onNavigateToAgenda,
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            },
+                          )
+                        else
+                          StreamBuilder<List<Task>>(
+                            stream: tasksStream,
+                            builder: (context, taskSnap) {
+                              final tasks = taskSnap.data ?? [];
+                              final todoTasks = tasks
+                                  .where((task) => !task.isDone)
+                                  .toList();
+
+                              return StreamBuilder<List<Agenda>>(
+                                stream: agendaStream,
+                                builder: (context, agendaSnap) {
+                                  final agendas = agendaSnap.data ?? [];
+                                  final upcomingAgendas = agendas
+                                      .where((agenda) => !agenda.isPast)
+                                      .toList();
+
+                                  return Row(
+                                    children: [
+                                      Expanded(
+                                        child: _buildSummaryCard(
+                                          title: isSekretaris
+                                              ? 'Tugas Dibuat'
+                                              : 'Tugas Menunggu',
+                                          value: isSekretaris
+                                              ? '${tasks.length}'
+                                              : '${todoTasks.length}',
+                                          subtitle: isSekretaris
+                                              ? '${todoTasks.length} belum diselesaikan'
+                                              : (todoTasks.isEmpty
+                                                    ? 'Semua terselesaikan'
+                                                    : 'Perlu dikerjakan'),
+                                          icon: Icons.assignment_outlined,
+                                          gradient: const [
+                                            AppTheme.primaryBlue,
+                                            AppTheme.accentBlue,
+                                          ],
+                                          onTap: widget.onNavigateToTasks,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: _buildSummaryCard(
+                                          title: 'Agenda Mendatang',
+                                          value: '${upcomingAgendas.length}',
+                                          subtitle: upcomingAgendas.isEmpty
+                                              ? 'Tidak ada jadwal'
+                                              : 'Jadwal aktif himpunan',
+                                          icon: Icons.event_available_outlined,
+                                          gradient: const [
+                                            AppTheme.primaryBlue,
+                                            AppTheme.accentBlue,
+                                          ],
+                                          onTap: widget.onNavigateToAgenda,
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            },
+                          ),
                       ],
                     ),
                   ),
@@ -271,42 +446,137 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
 
                         const SizedBox(height: 28),
 
-                        // Tugas dari Firestore
-                        StreamBuilder<List<Task>>(
-                          stream: tasksStream,
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState ==
-                                    ConnectionState.waiting &&
-                                !snapshot.hasData) {
-                              return _buildLoading();
-                            }
+                        // BAGIAN TUGAS / APPROVAL / MONITORING SESUAI ROLE
+                        if (isDekan || isKetua)
+                          StreamBuilder<List<Proposal>>(
+                            stream: _proposalService.watchAllProposals(),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState ==
+                                      ConnectionState.waiting &&
+                                  !snapshot.hasData) {
+                                return _buildLoading();
+                              }
 
-                            final allTasks = snapshot.data ?? [];
-                            final pendingTasks = allTasks
-                                .where((task) => !task.isDone)
-                                .toList();
+                              final all = snapshot.data ?? [];
+                              final pending = all
+                                  .where(
+                                    (p) => p.status == ProposalStatus.menunggu,
+                                  )
+                                  .toList();
 
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildSectionHeader(
-                                  captions.taskSectionTitle,
-                                  actionLabel: widget.onNavigateToTasks != null
-                                      ? 'Lihat Semua'
-                                      : null,
-                                  onAction: widget.onNavigateToTasks,
-                                ),
-                                const SizedBox(height: 14),
-                                if (pendingTasks.isEmpty)
-                                  _buildEmptyTaskCard()
-                                else
-                                  ...pendingTasks
-                                      .take(3)
-                                      .map(_buildDashboardTaskCard),
-                              ],
-                            );
-                          },
-                        ),
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildSectionHeader(
+                                    'Persetujuan Terbaru',
+                                    actionLabel: 'Lihat Semua',
+                                    onAction:
+                                        widget.onNavigateToApproval ??
+                                        () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => ApprovalPage(
+                                                userProfile: widget.profile,
+                                                role: widget.profile.role,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                  ),
+                                  const SizedBox(height: 14),
+                                  if (pending.isEmpty)
+                                    _buildEmptyApprovalCard()
+                                  else
+                                    ...pending
+                                        .take(3)
+                                        .map(_buildDashboardProposalCard),
+                                ],
+                              );
+                            },
+                          )
+                        else if (isWakilKetua)
+                          StreamBuilder<List<DivisionPerformance>>(
+                            stream: _monitoringService
+                                .watchAllDivisionsPerformance(),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState ==
+                                      ConnectionState.waiting &&
+                                  !snapshot.hasData) {
+                                return _buildLoading();
+                              }
+
+                              final divisions = snapshot.data ?? [];
+
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildSectionHeader(
+                                    'Monitoring Divisi',
+                                    actionLabel: 'Lihat Semua',
+                                    onAction:
+                                        widget.onNavigateToMonitoring ??
+                                        () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  DivisionMonitoringPage(
+                                                    userProfile: widget.profile,
+                                                    role: widget.profile.role,
+                                                  ),
+                                            ),
+                                          );
+                                        },
+                                  ),
+                                  const SizedBox(height: 14),
+                                  if (divisions.isEmpty)
+                                    _buildEmptyTaskCard()
+                                  else
+                                    ...divisions
+                                        .take(3)
+                                        .map(_buildDashboardMonitoringCard),
+                                ],
+                              );
+                            },
+                          )
+                        else
+                          StreamBuilder<List<Task>>(
+                            stream: tasksStream,
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState ==
+                                      ConnectionState.waiting &&
+                                  !snapshot.hasData) {
+                                return _buildLoading();
+                              }
+
+                              final allTasks = snapshot.data ?? [];
+                              final pendingTasks = allTasks
+                                  .where((task) => !task.isDone)
+                                  .toList();
+
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildSectionHeader(
+                                    captions.taskSectionTitle,
+                                    actionLabel:
+                                        widget.onNavigateToTasks != null
+                                        ? 'Lihat Semua'
+                                        : null,
+                                    onAction: widget.onNavigateToTasks,
+                                  ),
+                                  const SizedBox(height: 14),
+                                  if (pendingTasks.isEmpty)
+                                    _buildEmptyTaskCard()
+                                  else
+                                    ...pendingTasks
+                                        .take(3)
+                                        .map(_buildDashboardTaskCard),
+                                ],
+                              );
+                            },
+                          ),
 
                         const SizedBox(height: 28),
 
@@ -701,17 +971,34 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
 
   Widget _buildCategories() {
     final isDekan = widget.profile.role == UserRole.dekan;
-    final isKetua =
-        widget.profile.role == UserRole.ketua ||
-        widget.profile.role == UserRole.wakilKetua;
+    final isWakilKetua = widget.profile.role == UserRole.wakilKetua;
+    final isKetua = widget.profile.role == UserRole.ketua || isWakilKetua;
 
     final categories = [
-      _CategoryItem(
-        title: 'Tugas',
-        icon: Icons.assignment_outlined,
-        color: AppTheme.lightBlue,
-        onTap: widget.onNavigateToTasks,
-      ),
+      if (isWakilKetua)
+        _CategoryItem(
+          title: 'Monitoring',
+          icon: Icons.analytics_outlined,
+          color: AppTheme.lightBlue,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => DivisionMonitoringPage(
+                  userProfile: widget.profile,
+                  role: widget.profile.role,
+                ),
+              ),
+            );
+          },
+        )
+      else
+        _CategoryItem(
+          title: 'Tugas',
+          icon: Icons.assignment_outlined,
+          color: AppTheme.lightBlue,
+          onTap: widget.onNavigateToTasks,
+        ),
       _CategoryItem(
         title: (isDekan || isKetua) ? 'Persetujuan' : 'Pengajuan',
         icon: Icons.approval_outlined,
@@ -942,6 +1229,47 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
               ),
             ],
           ),
+          if (widget.profile.role == UserRole.sekretaris) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(
+                  Icons.business_center_outlined,
+                  size: 13,
+                  color: AppTheme.primaryBlue,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  task.targetRole == 'bendahara'
+                      ? 'Target: Bendahara'
+                      : 'Divisi: ${task.divisiNama ?? task.divisiId}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.primaryBlue,
+                  ),
+                ),
+                if (task.assignedToNama != null &&
+                    task.assignedToNama!.isNotEmpty) ...[
+                  const Text(
+                    ' • ',
+                    style: TextStyle(color: AppTheme.textMuted),
+                  ),
+                  Flexible(
+                    child: Text(
+                      'Penerima: ${task.assignedToNama}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
           if (task.description.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(
@@ -1114,6 +1442,145 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
       subtitle: 'Jadwal kegiatan atau rapat baru akan tampil di sini.',
       color: AppTheme.textMuted,
       background: AppTheme.lightBlue,
+    );
+  }
+
+  Widget _buildEmptyApprovalCard() {
+    return _buildEmptyCard(
+      icon: Icons.assignment_turned_in_outlined,
+      title: 'Tidak Ada Persetujuan Tertunda',
+      subtitle: 'Seluruh proposal dan usulan pengajuan telah selesai ditinjau.',
+      color: AppTheme.primaryBlue,
+      background: AppTheme.lightBlue,
+    );
+  }
+
+  Widget _buildDashboardProposalCard(Proposal p) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 11),
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: AppTheme.borderLight),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryBlue.withOpacity(0.035),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  p.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppTheme.warningBg,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  'Menunggu',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.warning,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${p.applicantName} • ${p.type.label}',
+            style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDashboardMonitoringCard(DivisionPerformance d) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 11),
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: AppTheme.borderLight),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryBlue.withOpacity(0.035),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  d.divisionName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '${d.progressPercentage}%',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.primaryBlue,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Kadiv: ${d.kadivName ?? '-'} • ${d.completedTasks}/${d.totalTasks} tugas tuntas',
+            style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: d.totalTasks > 0 ? d.completedTasks / d.totalTasks : 0.0,
+              minHeight: 5,
+              backgroundColor: AppTheme.lightBlue,
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                AppTheme.primaryBlue,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

@@ -9,6 +9,7 @@ import '../agenda/agenda_page.dart';
 import '../approval/approval_page.dart';
 import '../approval/proposal_page.dart';
 import '../finance/finance_page.dart';
+import '../monitoring/division_monitoring_page.dart';
 import '../tasks/tasks_page.dart';
 import '../users/user_approval_page.dart';
 import 'dashboard_home_view.dart';
@@ -44,7 +45,15 @@ class _DashboardPageState extends State<DashboardPage> {
       const DashboardNavItem(label: 'Beranda', icon: Icons.home_outlined),
     ];
 
-    if (canAccessTasks) {
+    if (role == UserRole.wakilKetua) {
+      // Untuk Wakil Ketua: Tugas digantikan oleh fitur Monitoring Divisi
+      items.add(
+        const DashboardNavItem(
+          label: 'Monitoring',
+          icon: Icons.analytics_outlined,
+        ),
+      );
+    } else if (canAccessTasks) {
       items.add(
         const DashboardNavItem(label: 'Tugas', icon: Icons.assignment_outlined),
       );
@@ -61,9 +70,7 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
     ]);
 
-    if (role == UserRole.dekan ||
-        role == UserRole.ketua ||
-        role == UserRole.wakilKetua) {
+    if (role == UserRole.dekan || role == UserRole.ketua) {
       items.add(
         const DashboardNavItem(
           label: 'Persetujuan',
@@ -123,6 +130,8 @@ class _DashboardPageState extends State<DashboardPage> {
           authService: widget.authService,
           divisionNameLoader: widget.divisionNameLoader,
           onNavigateToTasks: () => _navigateToLabel('Tugas'),
+          onNavigateToMonitoring: () => _navigateToLabel('Monitoring'),
+          onNavigateToApproval: () => _navigateToLabel('Persetujuan'),
           onNavigateToAgenda: () => _navigateToLabel('Agenda'),
           onNavigateToFinance: () => _navigateToLabel('Keuangan'),
         );
@@ -130,6 +139,11 @@ class _DashboardPageState extends State<DashboardPage> {
         return TasksPage(
           role: widget.profile.role,
           userProfile: widget.profile,
+        );
+      case 'Monitoring':
+        return DivisionMonitoringPage(
+          userProfile: widget.profile,
+          role: widget.profile.role,
         );
       case 'Agenda':
         return AgendaPage(

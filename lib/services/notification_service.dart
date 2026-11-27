@@ -27,11 +27,6 @@ class NotificationService {
               return true;
             }
             if (notif.targetType == NotificationTargetType.role) {
-              // Menangani role ketua dan wakil ketua yang berbagi tanggung jawab pimpinan
-              if (notif.targetRole == 'ketua' &&
-                  (role == UserRole.ketua || role == UserRole.wakilKetua)) {
-                return true;
-              }
               if (notif.targetRole == role.firestoreValue) {
                 return true;
               }
