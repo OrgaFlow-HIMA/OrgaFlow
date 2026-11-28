@@ -303,6 +303,35 @@ class AuthService {
     }
   }
 
+  /// Memperbarui informasi profil pengguna dan autentikasi Firebase jika email berubah.
+  Future<UserProfile> updateUserProfile({
+    required String uid,
+    required String nama,
+    required String email,
+    String? noWa,
+  }) async {
+    final cleanEmail = email.trim().toLowerCase();
+    final user = _auth.currentUser;
+
+    // Jika user sedang aktif dan email berubah di Firebase Auth
+    if (user != null && user.email != null && user.email!.toLowerCase() != cleanEmail) {
+      try {
+        await user.verifyBeforeUpdateEmail(cleanEmail);
+      } on FirebaseAuthException catch (e) {
+        debugPrint('[AuthService] verifyBeforeUpdateEmail info: ${e.code} - ${e.message}');
+      } catch (e) {
+        debugPrint('[AuthService] verifyBeforeUpdateEmail error: $e');
+      }
+    }
+
+    return await _userService.updateUserProfile(
+      uid: uid,
+      nama: nama,
+      email: cleanEmail,
+      noWa: noWa,
+    );
+  }
+
   /// Keluar dari sesi aplikasi
   Future<void> signOut() async {
     await _auth.signOut();

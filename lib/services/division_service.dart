@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../core/constants/app_constants.dart';
+import '../core/utils/division_helper.dart';
 
 abstract interface class DivisionNameLoader {
   Future<String?> getDivisionName(String divisionId);
@@ -26,23 +27,23 @@ class DivisionService implements DivisionNameLoader {
           .doc(cleanDivisionId)
           .get();
 
-      if (!snapshot.exists) {
-        return null;
+      if (snapshot.exists) {
+        final name = snapshot.data()?['nama'];
+        if (name is String && name.trim().isNotEmpty) {
+          return DivisionHelper.getShortName(name.trim());
+        }
       }
 
-      final name = snapshot.data()?['nama'];
-      if (name is! String || name.trim().isEmpty) {
-        throw const FormatException(
-          'Dokumen divisi tidak memiliki field nama yang valid.',
-        );
-      }
-
-      return name.trim();
+      // Fallback: format rapi menggunakan DivisionHelper
+      return DivisionHelper.getShortName(cleanDivisionId);
     } on FirebaseException catch (error) {
       debugPrint(
         '[OrgaFlow DivisionService ERROR] ${error.code} - ${error.message}',
       );
-      rethrow;
+      return DivisionHelper.getShortName(cleanDivisionId);
+    } catch (_) {
+      return DivisionHelper.getShortName(cleanDivisionId);
     }
   }
 }
+

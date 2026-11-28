@@ -40,6 +40,31 @@ class FakeAuthService implements AuthService {
   }
 
   @override
+  Future<bool> isEmailRegistered(String email) async {
+    return true;
+  }
+
+  @override
+  Future<void> sendPasswordResetEmail({required String email}) async {}
+
+  @override
+  Future<UserProfile> updateUserProfile({
+    required String uid,
+    required String nama,
+    required String email,
+    String? noWa,
+  }) async {
+    return UserProfile(
+      uid: uid,
+      nama: nama,
+      email: email,
+      noWa: noWa,
+      role: UserRole.anggota,
+      statusAkun: 'aktif',
+    );
+  }
+
+  @override
   Future<void> changePassword({required String newPassword}) async {}
 
   @override

@@ -4,6 +4,7 @@ import 'package:printing/printing.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/division_helper.dart';
 import '../../models/user_profile.dart';
 import '../../services/user_service.dart';
 import '../../widgets/role_badge.dart';
@@ -972,7 +973,7 @@ class _UserApprovalPageState extends State<UserApprovalPage> {
             _buildInfoRow(
               icon: Icons.groups_outlined,
               label: 'Divisi Diajukan',
-              value: user.divisiId!,
+              value: DivisionHelper.getFullName(user.divisiId),
               valueColor: AppTheme.primaryBlue,
               highlight: true,
             ),

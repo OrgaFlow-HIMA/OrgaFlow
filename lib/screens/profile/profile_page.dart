@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/division_helper.dart';
 import '../../models/user_profile.dart';
 import '../../services/auth_service.dart';
 import '../../services/division_service.dart';
 import '../../widgets/confirmation_dialog.dart';
 import '../auth/change_password_screen.dart';
+import 'widgets/edit_profile_modal.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   final UserProfile profile;
   final AuthService? authService;
   final DivisionNameLoader? divisionNameLoader;
@@ -19,18 +21,53 @@ class ProfilePage extends StatelessWidget {
     this.divisionNameLoader,
   });
 
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  late UserProfile _currentProfile;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentProfile = widget.profile;
+  }
+
+  @override
+  void didUpdateWidget(covariant ProfilePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.profile != widget.profile) {
+      _currentProfile = widget.profile;
+    }
+  }
+
+  void _showEditProfileModal(BuildContext context) {
+    EditProfileModal.show(
+      context,
+      profile: _currentProfile,
+      authService: widget.authService,
+      onProfileUpdated: (UserProfile updated) {
+        setState(() {
+          _currentProfile = updated;
+        });
+      },
+    );
+  }
+
   Future<void> _handleLogout(BuildContext context) async {
     final confirmed = await ConfirmationDialog.show(
       context,
       title: 'Konfirmasi Keluar',
-      message: 'Apakah Anda yakin ingin keluar dari akun ${profile.nama}?',
+      message:
+          'Apakah Anda yakin ingin keluar dari akun ${_currentProfile.nama}?',
       confirmText: 'Keluar',
       cancelText: 'Batal',
       isDestructive: true,
     );
 
     if (confirmed == true && context.mounted) {
-      final service = authService ?? AuthService();
+      final service = widget.authService ?? AuthService();
       await service.signOut();
       if (context.mounted) {
         Navigator.of(context).popUntil((route) => route.isFirst);
@@ -375,10 +412,10 @@ class ProfilePage extends StatelessWidget {
             child: CircleAvatar(
               radius: 44,
               backgroundColor: AppTheme.lightBlue,
-              backgroundImage: profile.fotoUrl?.isNotEmpty == true
-                  ? NetworkImage(profile.fotoUrl!)
+              backgroundImage: _currentProfile.fotoUrl?.isNotEmpty == true
+                  ? NetworkImage(_currentProfile.fotoUrl!)
                   : null,
-              child: profile.fotoUrl?.isNotEmpty == true
+              child: _currentProfile.fotoUrl?.isNotEmpty == true
                   ? null
                   : const Icon(
                       Icons.person_rounded,
@@ -391,7 +428,7 @@ class ProfilePage extends StatelessWidget {
 
           // Nama
           Text(
-            profile.nama.isNotEmpty ? profile.nama : '-',
+            _currentProfile.nama.isNotEmpty ? _currentProfile.nama : '-',
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 18,
@@ -404,7 +441,7 @@ class ProfilePage extends StatelessWidget {
 
           // NIM
           Text(
-            'NIM ${_safe(profile.nim)}',
+            'NIM ${_safe(_currentProfile.nim)}',
             style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w500,
@@ -421,44 +458,79 @@ class ProfilePage extends StatelessWidget {
             children: [
               _buildChip(
                 icon: Icons.shield_outlined,
-                label: profile.role.label,
+                label: _currentProfile.role.label,
                 color: AppTheme.primaryBlue,
                 bgColor: AppTheme.lightBlue,
               ),
-              if (profile.divisiId != null && profile.divisiId!.isNotEmpty)
+              if (_currentProfile.divisiId != null &&
+                  _currentProfile.divisiId!.isNotEmpty)
                 _buildDivisionChip(),
-              if (profile.periode.isNotEmpty)
+              if (_currentProfile.periode.isNotEmpty)
                 _buildChip(
                   icon: Icons.calendar_today_outlined,
-                  label: profile.periode,
+                  label: _currentProfile.periode,
                   color: AppTheme.textSecondary,
                   bgColor: AppTheme.background,
                 ),
             ],
+          ),
+          const SizedBox(height: 16),
+
+          // Tombol Edit Profil Cepat di Hero Card
+          SizedBox(
+            height: 40,
+            child: OutlinedButton.icon(
+              onPressed: () => _showEditProfileModal(context),
+              icon: const Icon(
+                Icons.edit_outlined,
+                size: 14,
+                color: AppTheme.primaryBlue,
+              ),
+              label: const Text(
+                'Edit Profil',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.primaryBlue,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(
+                  color: AppTheme.primaryBlue.withValues(alpha: 0.3),
+                ),
+                backgroundColor: AppTheme.lightBlue.withValues(alpha: 0.5),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(50),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  /// Chip divisi yang resolve nama dari Firestore lewat `divisionNameLoader`.
-  /// Jika loader null / error → fallback ke ID mentah.
+  /// Chip divisi yang resolve nama rapi dari DivisionHelper / Firestore lewat `divisionNameLoader`.
   Widget _buildDivisionChip() {
-    if (divisionNameLoader == null) {
+    final rawId = _currentProfile.divisiId!;
+    final shortName = DivisionHelper.getShortName(rawId);
+
+    if (widget.divisionNameLoader == null) {
       return _buildChip(
         icon: Icons.groups_outlined,
-        label: profile.divisiId!,
+        label: shortName,
         color: AppTheme.primaryBlue,
         bgColor: AppTheme.lightBlue,
       );
     }
 
     return FutureBuilder<String?>(
-      future: divisionNameLoader!.getDivisionName(profile.divisiId!),
+      future: widget.divisionNameLoader!.getDivisionName(rawId),
       builder: (context, snap) {
         final label = (snap.data != null && snap.data!.isNotEmpty)
             ? snap.data!
-            : profile.divisiId!;
+            : shortName;
         return _buildChip(
           icon: Icons.groups_outlined,
           label: label,
@@ -561,32 +633,35 @@ class ProfilePage extends StatelessWidget {
           _buildInfoTile(
             icon: Icons.alternate_email_rounded,
             iconColor: AppTheme.primaryBlue,
-            label: 'Email Kampus',
-            value: _safe(profile.email),
+            label: 'Email Akun',
+            value: _safe(_currentProfile.email),
           ),
           const SizedBox(height: 10),
           _buildInfoTile(
             icon: Icons.phone_rounded,
             iconColor: AppTheme.success,
-            label: 'Nomor WhatsApp',
-            value: _safe(profile.noWa),
+            label: 'Nomor WhatsApp / Telepon',
+            value: _currentProfile.noWa?.isNotEmpty == true
+                ? _currentProfile.noWa!
+                : 'Belum ditambahkan',
           ),
-          if (profile.divisiId != null && profile.divisiId!.isNotEmpty) ...[
+          if (_currentProfile.divisiId != null &&
+              _currentProfile.divisiId!.isNotEmpty) ...[
             const SizedBox(height: 10),
             _buildInfoTile(
               icon: Icons.groups_outlined,
               iconColor: AppTheme.accentBlue,
-              label: 'Divisi',
-              value: profile.divisiId!,
+              label: 'Divisi Resmi',
+              value: DivisionHelper.getFullName(_currentProfile.divisiId),
             ),
           ],
-          if (profile.periode.isNotEmpty) ...[
+          if (_currentProfile.periode.isNotEmpty) ...[
             const SizedBox(height: 10),
             _buildInfoTile(
               icon: Icons.calendar_month_outlined,
               iconColor: AppTheme.warning,
               label: 'Periode Kepengurusan',
-              value: profile.periode,
+              value: _currentProfile.periode,
             ),
           ],
         ],
@@ -594,21 +669,21 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  /// Chip status (Aktif / Menunggu / Ditolak) berdasarkan `profile`.
+  /// Chip status (Aktif / Menunggu / Ditolak) berdasarkan `_currentProfile`.
   Widget _buildStatusChip() {
     String label;
     Color bg;
     Color fg;
 
-    if (profile.isActive) {
+    if (_currentProfile.isActive) {
       label = 'Aktif';
       bg = AppTheme.successBg;
       fg = AppTheme.success;
-    } else if (profile.isPending) {
+    } else if (_currentProfile.isPending) {
       label = 'Menunggu';
       bg = AppTheme.warningBg;
       fg = AppTheme.warning;
-    } else if (profile.isRejected) {
+    } else if (_currentProfile.isRejected) {
       label = 'Ditolak';
       bg = AppTheme.errorBg;
       fg = AppTheme.error;
@@ -735,6 +810,13 @@ class ProfilePage extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           _buildPreferenceTile(
+            icon: Icons.person_outline_rounded,
+            label: 'Edit Data Profil',
+            subtitle: 'Ubah nama lengkap, nomor WhatsApp, dan email',
+            onTap: () => _showEditProfileModal(context),
+          ),
+          const SizedBox(height: 10),
+          _buildPreferenceTile(
             icon: Icons.lock_outline_rounded,
             label: 'Ubah Kata Sandi',
             subtitle: 'Perbarui kata sandi akun secara berkala',
@@ -742,8 +824,8 @@ class ProfilePage extends StatelessWidget {
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (context) => ChangePasswordScreen(
-                    profile: profile,
-                    authService: authService,
+                    profile: _currentProfile,
+                    authService: widget.authService,
                     onSuccess: () => Navigator.of(context).pop(),
                   ),
                 ),

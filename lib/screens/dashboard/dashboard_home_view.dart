@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/division_helper.dart';
 import '../../enums/user_role.dart';
 import '../../models/agenda.dart';
 import '../../models/task.dart';
@@ -23,6 +24,10 @@ import '../monitoring/division_monitoring_page.dart';
 import '../notifications/notification_page.dart';
 import '../profile/profile_page.dart';
 import '../../services/notification_service.dart';
+import '../agenda/agenda_page.dart';
+import '../finance/finance_page.dart';
+import '../tasks/tasks_page.dart';
+import '../users/user_approval_page.dart';
 
 class DashboardCaptions {
   final String greetingSubtitle;
@@ -444,7 +449,7 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
                         const SizedBox(height: 16),
                         _buildCategories(),
 
-                        const SizedBox(height: 28),
+                        const SizedBox(height: 40),
 
                         // BAGIAN TUGAS / APPROVAL / MONITORING SESUAI ROLE
                         if (isDekan || isKetua)
@@ -974,120 +979,418 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
     final isDekan = role == UserRole.dekan;
     final isKetua = role == UserRole.ketua;
     final isWakilKetua = role == UserRole.wakilKetua;
+    final isSekretaris = role == UserRole.sekretaris;
+    final isBendahara = role == UserRole.bendahara;
+    final isKadiv = role == UserRole.kepalaDivisi;
+    final isAnggota = role == UserRole.anggota;
 
-    // Persetujuan: Hanya Dekan dan Ketua
-    final canAccessApproval = isDekan || isKetua;
+    // Helper navigasi
+    void openTasks() {
+      if (widget.onNavigateToTasks != null) {
+        widget.onNavigateToTasks!();
+      } else {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => TasksPage(
+              role: widget.profile.role,
+              userProfile: widget.profile,
+            ),
+          ),
+        );
+      }
+    }
 
-    // Pengajuan: Khusus Manajemen/Pengurus kecuali Dekan dan Ketua (yaitu Wakahim, Sekretaris, Bendahara, Kadiv)
-    final canAccessProposal =
-        role.isPengurus && role != UserRole.dekan && role != UserRole.ketua;
+    void openMonitoring() {
+      if (widget.onNavigateToMonitoring != null) {
+        widget.onNavigateToMonitoring!();
+      } else {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => DivisionMonitoringPage(
+              userProfile: widget.profile,
+              role: widget.profile.role,
+            ),
+          ),
+        );
+      }
+    }
 
-    final categories = [
-      if (isWakilKetua)
-        _CategoryItem(
-          title: 'Monitoring',
-          icon: Icons.analytics_outlined,
-          color: AppTheme.lightBlue,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => DivisionMonitoringPage(
-                  userProfile: widget.profile,
-                  role: widget.profile.role,
-                ),
-              ),
-            );
-          },
-        )
-      else
-        _CategoryItem(
-          title: 'Tugas',
-          icon: Icons.assignment_outlined,
-          color: AppTheme.lightBlue,
-          onTap: widget.onNavigateToTasks,
+    void openApproval() {
+      if (widget.onNavigateToApproval != null) {
+        widget.onNavigateToApproval!();
+      } else {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ApprovalPage(
+              userProfile: widget.profile,
+              role: widget.profile.role,
+            ),
+          ),
+        );
+      }
+    }
+
+    void openProposal() {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ProposalPage(
+            role: widget.profile.role,
+            userProfile: widget.profile,
+          ),
         ),
-      if (canAccessApproval)
+      );
+    }
+
+    void openAgenda() {
+      if (widget.onNavigateToAgenda != null) {
+        widget.onNavigateToAgenda!();
+      } else {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AgendaPage(
+              userName: widget.profile.nama,
+              role: widget.profile.role,
+            ),
+          ),
+        );
+      }
+    }
+
+    void openFinance() {
+      if (widget.onNavigateToFinance != null) {
+        widget.onNavigateToFinance!();
+      } else {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => FinancePage(
+              userRole: widget.profile.role,
+              userName: widget.profile.nama,
+            ),
+          ),
+        );
+      }
+    }
+
+    void openAttendance() {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AttendancePage(
+            userName: widget.profile.nama,
+            divisionName: DivisionHelper.getFullName(widget.profile.divisiId),
+            userRoleLabel: widget.profile.role.label,
+          ),
+        ),
+      );
+    }
+
+    void openAnnouncement() {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PengumumanPage(
+            userRole: widget.profile.role,
+            userName: widget.profile.nama,
+          ),
+        ),
+      );
+    }
+
+    void openUserApproval() {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const UserApprovalPage()),
+      );
+    }
+
+    // Bangun minimal 5 item layanan sesuai peran resmi
+    final categories = <_CategoryItem>[];
+
+    if (isKetua) {
+      // KETUA (5 Item): Persetujuan, Monitoring, Agenda, Keuangan, Pengumuman
+      categories.addAll([
         _CategoryItem(
           title: 'Persetujuan',
           icon: Icons.approval_outlined,
           color: AppTheme.lightBlue,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ApprovalPage(
-                  userProfile: widget.profile,
-                  role: widget.profile.role,
-                ),
-              ),
-            );
-          },
-        )
-      else if (canAccessProposal)
+          onTap: openApproval,
+        ),
+        _CategoryItem(
+          title: 'Monitoring',
+          icon: Icons.analytics_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openMonitoring,
+        ),
+        _CategoryItem(
+          title: 'Agenda',
+          icon: Icons.event_available_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openAgenda,
+        ),
+        _CategoryItem(
+          title: 'Keuangan',
+          icon: Icons.account_balance_wallet_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openFinance,
+        ),
+        _CategoryItem(
+          title: 'Pengumuman',
+          icon: Icons.campaign_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openAnnouncement,
+        ),
+      ]);
+    } else if (isWakilKetua) {
+      // WAKIL KETUA (5 Item): Monitoring, Pengajuan, Agenda, Presensi, Pengumuman
+      categories.addAll([
+        _CategoryItem(
+          title: 'Monitoring',
+          icon: Icons.analytics_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openMonitoring,
+        ),
         _CategoryItem(
           title: 'Pengajuan',
-          icon: Icons.approval_outlined,
+          icon: Icons.note_add_outlined,
           color: AppTheme.lightBlue,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ProposalPage(
-                  role: widget.profile.role,
-                  userProfile: widget.profile,
-                ),
-              ),
-            );
-          },
+          onTap: openProposal,
         ),
-      _CategoryItem(
-        title: 'Pengumuman',
-        icon: Icons.campaign_outlined,
-        color: AppTheme.lightBlue,
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => PengumumanPage(
-                userRole: widget.profile.role,
-                userName: widget.profile.nama,
-              ),
-            ),
-          );
-        },
-      ),
-      if (!isDekan)
+        _CategoryItem(
+          title: 'Agenda',
+          icon: Icons.event_available_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openAgenda,
+        ),
         _CategoryItem(
           title: 'Presensi',
           icon: Icons.how_to_reg_outlined,
           color: AppTheme.lightBlue,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => AttendancePage(
-                  userName: widget.profile.nama,
-                  divisionName: widget.profile.divisiId,
-                  userRoleLabel: widget.profile.role.label,
-                ),
-              ),
-            );
-          },
-        )
-      else
+          onTap: openAttendance,
+        ),
+        _CategoryItem(
+          title: 'Pengumuman',
+          icon: Icons.campaign_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openAnnouncement,
+        ),
+      ]);
+    } else if (isSekretaris) {
+      // SEKRETARIS (5 Item): Tugas, Pengguna, Pengajuan, Presensi, Pengumuman
+      categories.addAll([
+        _CategoryItem(
+          title: 'Tugas',
+          icon: Icons.assignment_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openTasks,
+        ),
+        _CategoryItem(
+          title: 'Pengguna',
+          icon: Icons.person_add_alt_1_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openUserApproval,
+        ),
+        _CategoryItem(
+          title: 'Pengajuan',
+          icon: Icons.note_add_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openProposal,
+        ),
+        _CategoryItem(
+          title: 'Presensi',
+          icon: Icons.how_to_reg_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openAttendance,
+        ),
+        _CategoryItem(
+          title: 'Pengumuman',
+          icon: Icons.campaign_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openAnnouncement,
+        ),
+      ]);
+    } else if (isBendahara) {
+      // BENDAHARA (5 Item): Keuangan, Pengajuan, Tugas, Presensi, Pengumuman
+      categories.addAll([
+        _CategoryItem(
+          title: 'Keuangan',
+          icon: Icons.account_balance_wallet_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openFinance,
+        ),
+        _CategoryItem(
+          title: 'Pengajuan',
+          icon: Icons.note_add_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openProposal,
+        ),
+        _CategoryItem(
+          title: 'Tugas',
+          icon: Icons.assignment_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openTasks,
+        ),
+        _CategoryItem(
+          title: 'Presensi',
+          icon: Icons.how_to_reg_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openAttendance,
+        ),
+        _CategoryItem(
+          title: 'Pengumuman',
+          icon: Icons.campaign_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openAnnouncement,
+        ),
+      ]);
+    } else if (isKadiv) {
+      // KEPALA DIVISI (5 Item): Tugas, Pengajuan, Agenda, Presensi, Pengumuman
+      categories.addAll([
+        _CategoryItem(
+          title: 'Tugas',
+          icon: Icons.assignment_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openTasks,
+        ),
+        _CategoryItem(
+          title: 'Pengajuan',
+          icon: Icons.note_add_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openProposal,
+        ),
+        _CategoryItem(
+          title: 'Agenda',
+          icon: Icons.event_available_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openAgenda,
+        ),
+        _CategoryItem(
+          title: 'Presensi',
+          icon: Icons.how_to_reg_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openAttendance,
+        ),
+        _CategoryItem(
+          title: 'Pengumuman',
+          icon: Icons.campaign_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openAnnouncement,
+        ),
+      ]);
+    } else if (isAnggota) {
+      // ANGGOTA (5 Item): Tugas, Agenda, Keuangan, Presensi, Pengumuman
+      categories.addAll([
+        _CategoryItem(
+          title: 'Tugas',
+          icon: Icons.assignment_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openTasks,
+        ),
+        _CategoryItem(
+          title: 'Agenda',
+          icon: Icons.event_available_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openAgenda,
+        ),
+        _CategoryItem(
+          title: 'Keuangan',
+          icon: Icons.account_balance_wallet_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openFinance,
+        ),
+        _CategoryItem(
+          title: 'Presensi',
+          icon: Icons.how_to_reg_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openAttendance,
+        ),
+        _CategoryItem(
+          title: 'Pengumuman',
+          icon: Icons.campaign_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openAnnouncement,
+        ),
+      ]);
+    } else if (isDekan) {
+      // DEKAN: Persetujuan, Agenda, Keuangan, Pengumuman, Administrasi
+      categories.addAll([
+        _CategoryItem(
+          title: 'Persetujuan',
+          icon: Icons.approval_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openApproval,
+        ),
+        _CategoryItem(
+          title: 'Agenda',
+          icon: Icons.event_available_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openAgenda,
+        ),
+        _CategoryItem(
+          title: 'Keuangan',
+          icon: Icons.account_balance_wallet_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openFinance,
+        ),
+        _CategoryItem(
+          title: 'Pengumuman',
+          icon: Icons.campaign_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openAnnouncement,
+        ),
         _CategoryItem(
           title: 'Administrasi',
           icon: Icons.folder_open_outlined,
           color: AppTheme.lightBlue,
           onTap: widget.onNavigateToAdministration,
         ),
-    ];
+      ]);
+    } else {
+      // Fallback
+      categories.addAll([
+        _CategoryItem(
+          title: 'Persetujuan',
+          icon: Icons.approval_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openApproval,
+        ),
+        _CategoryItem(
+          title: 'Agenda',
+          icon: Icons.event_available_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openAgenda,
+        ),
+        _CategoryItem(
+          title: 'Keuangan',
+          icon: Icons.account_balance_wallet_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openFinance,
+        ),
+        _CategoryItem(
+          title: 'Pengumuman',
+          icon: Icons.campaign_outlined,
+          color: AppTheme.lightBlue,
+          onTap: openAnnouncement,
+        ),
+        _CategoryItem(
+          title: 'Administrasi',
+          icon: Icons.folder_open_outlined,
+          color: AppTheme.lightBlue,
+          onTap: widget.onNavigateToAdministration,
+        ),
+      ]);
+    }
 
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         for (int i = 0; i < categories.length; i++) ...[
-          if (i > 0) const SizedBox(width: 8),
+          if (i > 0) const SizedBox(width: 0.5),
           Expanded(child: _buildCategoryItem(categories[i])),
         ],
       ],
@@ -1101,17 +1404,18 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
         onTap: item.onTap,
         borderRadius: BorderRadius.circular(15),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 58,
-              height: 58,
+              width: 52,
+              height: 52,
               decoration: BoxDecoration(
                 color: AppTheme.accentBlue.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(17),
+                borderRadius: BorderRadius.circular(16),
               ),
-              child: Icon(item.icon, size: 27, color: AppTheme.primaryBlue),
+              child: Icon(item.icon, size: 24, color: AppTheme.primaryBlue),
             ),
-            const SizedBox(height: 9),
+            const SizedBox(height: 6),
             Text(
               item.title,
               maxLines: 1,

@@ -322,6 +322,55 @@ class UserService {
     }
   }
 
+  /// Memperbarui informasi profil pengguna (nama, noWa, email).
+  /// Role dan Divisi sengaja dikunci agar tidak dapat diubah sembarangan oleh user mandiri.
+  Future<UserProfile> updateUserProfile({
+    required String uid,
+    required String nama,
+    required String email,
+    String? noWa,
+  }) async {
+    final cleanUid = uid.trim();
+    final cleanNama = nama.trim();
+    final cleanEmail = email.trim().toLowerCase();
+    final cleanNoWa = noWa?.trim();
+
+    if (cleanNama.isEmpty) {
+      throw Exception('Nama lengkap tidak boleh kosong.');
+    }
+    if (cleanEmail.isEmpty) {
+      throw Exception('Email tidak boleh kosong.');
+    }
+
+    try {
+      final docRef = _firestore.collection(AppConstants.usersCollection).doc(cleanUid);
+      final now = DateTime.now();
+
+      final updateData = <String, dynamic>{
+        'nama': cleanNama,
+        'email': cleanEmail,
+        'no_wa': (cleanNoWa != null && cleanNoWa.isNotEmpty) ? cleanNoWa : null,
+        'updated_at': Timestamp.fromDate(now),
+      };
+
+      await docRef.update(updateData);
+
+      // Ambil profil terbaru
+      final updatedSnapshot = await docRef.get(const GetOptions(source: Source.server));
+      if (updatedSnapshot.exists && updatedSnapshot.data() != null) {
+        return UserProfile.fromMap(updatedSnapshot.data()!, updatedSnapshot.id);
+      }
+
+      throw Exception('Gagal memuat profil setelah diperbarui.');
+    } on FirebaseException catch (e) {
+      debugPrint('[OrgaFlow UserService ERROR] Gagal update profil: ${e.code} - ${e.message}');
+      throw Exception('Gagal memperbarui profil: ${e.message ?? e.code}');
+    } catch (e) {
+      debugPrint('[OrgaFlow UserService ERROR] General update profil error: $e');
+      throw Exception('Terjadi kesalahan saat menyimpan profil: $e');
+    }
+  }
+
   String _temporaryPassword() {
     final random = Random.secure();
     const chars =

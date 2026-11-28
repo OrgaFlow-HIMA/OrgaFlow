@@ -46,14 +46,6 @@ class _DivisionMonitoringPageState extends State<DivisionMonitoringPage> {
         lower.contains('anggota')) {
       return Icons.groups_outlined;
     }
-    if (lower.contains('danus') ||
-        lower.contains('dana') ||
-        lower.contains('usaha')) {
-      return Icons.monetization_on_outlined;
-    }
-    if (lower.contains('kominfo') || lower.contains('informasi')) {
-      return Icons.language_rounded;
-    }
     return Icons.work_outline_rounded;
   }
 

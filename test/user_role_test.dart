@@ -3,8 +3,9 @@ import 'package:flutter_orgaflow/enums/user_role.dart';
 
 void main() {
   group('Sistem Enam Role OrgaFlow Tests', () {
-    test('Hanya memiliki tepat enam role resmi tanpa role Admin', () {
-      expect(UserRole.values.length, 6);
+    test('Hanya memiliki tepat tujuh role resmi tanpa role Admin', () {
+      expect(UserRole.values.length, 7);
+      expect(UserRole.values, contains(UserRole.dekan));
       expect(UserRole.values, contains(UserRole.ketua));
       expect(UserRole.values, contains(UserRole.wakilKetua));
       expect(UserRole.values, contains(UserRole.sekretaris));
@@ -13,7 +14,8 @@ void main() {
       expect(UserRole.values, contains(UserRole.anggota));
     });
 
-    test('Parsing dari nilai Firestore valid untuk seluruh 6 role', () {
+    test('Parsing dari nilai Firestore valid untuk seluruh 7 role', () {
+      expect(UserRole.fromFirestore('dekan'), UserRole.dekan);
       expect(UserRole.fromFirestore('ketua'), UserRole.ketua);
       expect(UserRole.fromFirestore('wakil_ketua'), UserRole.wakilKetua);
       expect(UserRole.fromFirestore('sekretaris'), UserRole.sekretaris);

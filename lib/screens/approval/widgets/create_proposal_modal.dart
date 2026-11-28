@@ -146,7 +146,7 @@ class _CreateProposalModalState extends State<CreateProposalModal> {
               {'id': 'bph', 'nama': 'BPH (Badan Pengurus Harian)'},
               {'id': 'medkom', 'nama': 'Media & Komunikasi'},
               {'id': 'psdm', 'nama': 'Pengembangan SDM'},
-              {'id': 'litbang', 'nama': 'Penelitian & Pengembangan'},
+              {'id': 'ristek', 'nama': 'Riset & Teknologi'},
             ];
           }
           final match = _divisions.firstWhere(
