@@ -970,9 +970,17 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
   }
 
   Widget _buildCategories() {
-    final isDekan = widget.profile.role == UserRole.dekan;
-    final isWakilKetua = widget.profile.role == UserRole.wakilKetua;
-    final isKetua = widget.profile.role == UserRole.ketua || isWakilKetua;
+    final role = widget.profile.role;
+    final isDekan = role == UserRole.dekan;
+    final isKetua = role == UserRole.ketua;
+    final isWakilKetua = role == UserRole.wakilKetua;
+
+    // Persetujuan: Hanya Dekan dan Ketua
+    final canAccessApproval = isDekan || isKetua;
+
+    // Pengajuan: Khusus Manajemen/Pengurus kecuali Dekan dan Ketua (yaitu Wakahim, Sekretaris, Bendahara, Kadiv)
+    final canAccessProposal =
+        role.isPengurus && role != UserRole.dekan && role != UserRole.ketua;
 
     final categories = [
       if (isWakilKetua)
@@ -999,12 +1007,12 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
           color: AppTheme.lightBlue,
           onTap: widget.onNavigateToTasks,
         ),
-      _CategoryItem(
-        title: (isDekan || isKetua) ? 'Persetujuan' : 'Pengajuan',
-        icon: Icons.approval_outlined,
-        color: AppTheme.lightBlue,
-        onTap: () {
-          if (isDekan || isKetua) {
+      if (canAccessApproval)
+        _CategoryItem(
+          title: 'Persetujuan',
+          icon: Icons.approval_outlined,
+          color: AppTheme.lightBlue,
+          onTap: () {
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -1014,7 +1022,14 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
                 ),
               ),
             );
-          } else {
+          },
+        )
+      else if (canAccessProposal)
+        _CategoryItem(
+          title: 'Pengajuan',
+          icon: Icons.approval_outlined,
+          color: AppTheme.lightBlue,
+          onTap: () {
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -1024,9 +1039,8 @@ class _DashboardHomeViewState extends State<DashboardHomeView> {
                 ),
               ),
             );
-          }
-        },
-      ),
+          },
+        ),
       _CategoryItem(
         title: 'Pengumuman',
         icon: Icons.campaign_outlined,

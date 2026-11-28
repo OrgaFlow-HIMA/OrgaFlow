@@ -3,9 +3,6 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/user_profile.dart';
 import '../../services/auth_service.dart';
-import 'change_password_screen.dart';
-import '../../enums/user_role.dart';
-import '../../core/constants/app_constants.dart';
 
 class LoginScreen extends StatefulWidget {
   final AuthService? authService;
@@ -135,56 +132,504 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   // =========================================================
-  // FORGOT PASSWORD → REDIRECT KE CHANGE PASSWORD
+  // FORGOT PASSWORD → DIALOG RESET EMAIL FIREBASE
   // =========================================================
 
   Future<void> _handleForgotPassword() async {
-    // Reset error lama
     setState(() => _errorMessage = null);
 
-    // Validasi email dulu — reset password butuh identitas user
-    final emailError = _validateEmail(_emailController.text);
-    if (emailError != null) {
-      setState(() {
-        _errorMessage = 'Isi email terlebih dahulu untuk mengubah kata sandi.';
-      });
-      _emailFocus.requestFocus();
-      return;
-    }
-
-    final placeholderProfile = UserProfile(
-      uid: '',
-      nama: '',
-      email: _emailController.text.trim(),
-      nim: null,
-      role: UserRole.anggota,
-      divisiId: '',
-      statusAkun: AppConstants.statusInactive,
-      createdAt: DateTime.now(),
+    final resetEmailController = TextEditingController(
+      text: _emailController.text.trim(),
     );
+    String? dialogError;
+    bool isSending = false;
 
-    // Push ChangePasswordScreen
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ChangePasswordScreen(
-          profile: placeholderProfile,
-          authService: _authService,
-          onSuccess: () {
-            // Karena ChangePasswordScreen tidak memanggil pop,
-            // kita pop dari sini saat sukses.
-            if (!mounted) return;
-            Navigator.of(context).pop();
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final mediaQuery = MediaQuery.of(context);
 
-            // Feedback ke user setelah kembali ke LoginScreen
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                backgroundColor: AppTheme.success,
-                content: Text(
-                  'Kata sandi berhasil diperbarui. Silakan login kembali.',
+            return Padding(
+              padding: EdgeInsets.only(bottom: mediaQuery.viewInsets.bottom),
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                constraints: BoxConstraints(
+                  maxHeight: mediaQuery.size.height * 0.9,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Grabber
+                    const SizedBox(height: 12),
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Header
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: AppTheme.lightBlue,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.lock_reset_rounded,
+                              color: AppTheme.primaryBlue,
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Lupa Kata Sandi',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppTheme.textPrimary,
+                                  ),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Pulihkan akses akun Anda',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: AppTheme.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              color: AppTheme.textSecondary,
+                            ),
+                            onPressed: () => Navigator.pop(ctx),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Divider(height: 1, color: AppTheme.borderLight),
+
+                    // Konten
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.fromLTRB(
+                          20,
+                          20,
+                          20,
+                          24 + mediaQuery.padding.bottom,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Masukkan alamat email yang terdaftar. Kami akan mengirimkan tautan verifikasi resmi untuk mengatur ulang kata sandi Anda.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                height: 1.5,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Input Email
+                            const Text(
+                              'Email Akun',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            TextFormField(
+                              controller: resetEmailController,
+                              keyboardType: TextInputType.emailAddress,
+                              textInputAction: TextInputAction.done,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.textPrimary,
+                                height: 1.35,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: 'nama@example.com',
+                                hintStyle: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppTheme.textSecondary,
+                                ),
+                                prefixIcon: const Icon(
+                                  Icons.mail_outline_rounded,
+                                  size: 20,
+                                  color: AppTheme.primaryBlue,
+                                ),
+                                prefixIconConstraints: const BoxConstraints(
+                                  minWidth: 44,
+                                  minHeight: 44,
+                                ),
+                                filled: true,
+                                fillColor: AppTheme.background,
+                                isDense: false,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 14,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: AppTheme.borderLight,
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: AppTheme.borderLight,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: AppTheme.primaryBlue,
+                                    width: 1.4,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            if (dialogError != null) ...[
+                              const SizedBox(height: 12),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.errorBg,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: AppTheme.error.withOpacity(0.3),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.error_outline_rounded,
+                                      size: 16,
+                                      color: AppTheme.error,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        dialogError!,
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AppTheme.error,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+
+                            const SizedBox(height: 24),
+
+                            // Tombol Aksi
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: SizedBox(
+                                    height: 44,
+                                    child: OutlinedButton(
+                                      onPressed: isSending
+                                          ? null
+                                          : () => Navigator.pop(ctx),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppTheme.textSecondary,
+                                        side: BorderSide(
+                                          color: AppTheme.borderLight,
+                                          width: 1.2,
+                                        ),
+                                        padding: EdgeInsets.zero,
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                        shape: const StadiumBorder(),
+                                        textStyle: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      child: const Text('Batal'),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  flex: 2,
+                                  child: SizedBox(
+                                    height: 44,
+                                    child: FilledButton.icon(
+                                      onPressed: isSending
+                                          ? null
+                                          : () async {
+                                              final targetEmail =
+                                                  resetEmailController.text
+                                                      .trim();
+                                              final err = _validateEmail(
+                                                targetEmail,
+                                              );
+                                              if (err != null) {
+                                                setModalState(() {
+                                                  dialogError = err;
+                                                });
+                                                return;
+                                              }
+
+                                              setModalState(() {
+                                                isSending = true;
+                                                dialogError = null;
+                                              });
+
+                                              try {
+                                                await _authService
+                                                    .sendPasswordResetEmail(
+                                                      email: targetEmail,
+                                                    );
+                                                if (!context.mounted) return;
+                                                Navigator.pop(ctx);
+
+                                                if (!mounted) return;
+                                                _showResetSuccessDialog(
+                                                  targetEmail,
+                                                );
+                                              } on AuthServiceException catch (
+                                                e
+                                              ) {
+                                                setModalState(() {
+                                                  isSending = false;
+                                                  dialogError = e.message;
+                                                });
+                                              } catch (e) {
+                                                setModalState(() {
+                                                  isSending = false;
+                                                  dialogError = 'Gagal mengirim email. Periksa koneksi Anda.';
+                                                });
+                                              }
+                                            },
+                                      icon: isSending
+                                          ? const SizedBox(
+                                              width: 16,
+                                              height: 16,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Colors.white,
+                                              ),
+                                            )
+                                          : const Icon(
+                                              Icons.send_rounded,
+                                              size: 16,
+                                            ),
+                                      label: Text(
+                                        isSending
+                                            ? 'Mengirim...'
+                                            : 'Kirim Tautan',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: AppTheme.primaryBlue,
+                                        foregroundColor: Colors.white,
+                                        padding: EdgeInsets.zero,
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                        shape: const StadiumBorder(),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             );
           },
+        );
+      },
+    );
+  }
+
+  void _showResetSuccessDialog(String email) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: AppTheme.surface,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppTheme.successBg,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.mark_email_read_rounded,
+                      color: AppTheme.success,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Email Terkirim',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Tautan reset telah dikirim',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // Konten
+              const Text(
+                'Tautan pemulihan kata sandi telah dikirim ke:',
+                style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                email,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.primaryBlue,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppTheme.lightBlue.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: AppTheme.primaryBlue.withValues(alpha: 0.15),
+                  ),
+                ),
+                child: const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 16,
+                      color: AppTheme.primaryBlue,
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'PENTING: Periksa folder Kotak Masuk (Inbox) serta folder Spam / Sampah / Promosi jika email dari noreply@... tidak langsung muncul.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          height: 1.4,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Silakan klik tautan pada email tersebut untuk membuat kata sandi baru akun Anda.',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  height: 1.4,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Tombol Tutup
+              SizedBox(
+                height: 44,
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppTheme.primaryBlue,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: const StadiumBorder(),
+                    textStyle: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  child: const Text('Mengerti'),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

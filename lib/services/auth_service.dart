@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+
 import '../core/constants/app_constants.dart';
 import '../core/utils/auth_error_mapper.dart';
 import '../enums/user_role.dart';
@@ -19,11 +20,9 @@ class AuthService {
   final FirebaseAuth _auth;
   final UserService _userService;
 
-  AuthService({
-    FirebaseAuth? auth,
-    UserService? userService,
-  })  : _auth = auth ?? FirebaseAuth.instance,
-        _userService = userService ?? UserService();
+  AuthService({FirebaseAuth? auth, UserService? userService})
+    : _auth = auth ?? FirebaseAuth.instance,
+      _userService = userService ?? UserService();
 
   /// Aliran perubahan status autentikasi pengguna
   Stream<User?> get authStateChanges => _auth.authStateChanges();
@@ -49,11 +48,17 @@ class AuthService {
     final cleanNim = nim?.trim();
     final cleanNoWa = noWa?.trim();
 
-    if (cleanEmail.isEmpty) throw const AuthServiceException('Email wajib diisi.');
-    if (cleanPassword.length < 6) throw const AuthServiceException('Password minimal 6 karakter.');
-    if (cleanNama.isEmpty) throw const AuthServiceException('Nama lengkap wajib diisi.');
-    if (role.isPengurus && (suratTugasUrl == null || suratTugasUrl.trim().isEmpty)) {
-      throw const AuthServiceException('Pendaftar Pengurus wajib melampirkan berkas/tautan Surat Tugas.');
+    if (cleanEmail.isEmpty)
+      throw const AuthServiceException('Email wajib diisi.');
+    if (cleanPassword.length < 6)
+      throw const AuthServiceException('Password minimal 6 karakter.');
+    if (cleanNama.isEmpty)
+      throw const AuthServiceException('Nama lengkap wajib diisi.');
+    if (role.isPengurus &&
+        (suratTugasUrl == null || suratTugasUrl.trim().isEmpty)) {
+      throw const AuthServiceException(
+        'Pendaftar Pengurus wajib melampirkan berkas/tautan Surat Tugas.',
+      );
     }
 
     UserCredential credential;
@@ -65,7 +70,9 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       throw AuthServiceException(AuthErrorMapper.mapFirebaseAuthError(e));
     } catch (e) {
-      throw const AuthServiceException('Gagal membuat akun autentikasi. Silakan coba lagi.');
+      throw const AuthServiceException(
+        'Gagal membuat akun autentikasi. Silakan coba lagi.',
+      );
     }
 
     final user = credential.user;
@@ -88,25 +95,37 @@ class AuthService {
     );
 
     try {
-      debugPrint('[OrgaFlow AuthService] Menyimpan user profile ke Firestore: users/${user.uid} (status: ${AppConstants.statusPending})');
+      debugPrint(
+        '[OrgaFlow AuthService] Menyimpan user profile ke Firestore: users/${user.uid} (status: ${AppConstants.statusPending})',
+      );
       await FirebaseFirestore.instance
           .collection(AppConstants.usersCollection)
           .doc(user.uid)
           .set(newProfile.toMap());
-      debugPrint('[OrgaFlow AuthService] Berhasil menyimpan user profile ke Firestore!');
+      debugPrint(
+        '[OrgaFlow AuthService] Berhasil menyimpan user profile ke Firestore!',
+      );
     } on FirebaseException catch (e) {
-      debugPrint('[OrgaFlow AuthService ERROR] FirebaseException simpan profil: ${e.code} - ${e.message}');
+      debugPrint(
+        '[OrgaFlow AuthService ERROR] FirebaseException simpan profil: ${e.code} - ${e.message}',
+      );
       // Jika penulisan Firestore gagal, hapus user auth agar tidak menggantung
       try {
         await user.delete();
       } catch (_) {}
-      throw AuthServiceException('Gagal menyimpan profil pendaftaran: ${e.message ?? e.code}');
+      throw AuthServiceException(
+        'Gagal menyimpan profil pendaftaran: ${e.message ?? e.code}',
+      );
     } catch (e) {
-      debugPrint('[OrgaFlow AuthService ERROR] General Exception simpan profil: $e');
+      debugPrint(
+        '[OrgaFlow AuthService ERROR] General Exception simpan profil: $e',
+      );
       try {
         await user.delete();
       } catch (_) {}
-      throw AuthServiceException('Terjadi kesalahan saat menyimpan data pendaftaran: $e');
+      throw AuthServiceException(
+        'Terjadi kesalahan saat menyimpan data pendaftaran: $e',
+      );
     }
 
     // Keluarkan dari sesi agar tidak langsung login sebelum di-ACC
@@ -158,9 +177,13 @@ class AuthService {
     // Ambil profil dari Cloud Firestore
     UserProfile? profile;
     try {
-      debugPrint('[OrgaFlow AuthService] Mengambil profil untuk UID: ${user.uid} (${user.email})');
+      debugPrint(
+        '[OrgaFlow AuthService] Mengambil profil untuk UID: ${user.uid} (${user.email})',
+      );
       profile = await _userService.getUserProfile(user.uid, email: user.email);
-      debugPrint('[OrgaFlow AuthService] Hasil profil: status_akun="${profile?.statusAkun}", isActive=${profile?.isActive}');
+      debugPrint(
+        '[OrgaFlow AuthService] Hasil profil: status_akun="${profile?.statusAkun}", isActive=${profile?.isActive}',
+      );
     } on InvalidRoleException {
       // Role tidak valid -> keluarkan pengguna dan tolak akses
       await _auth.signOut();
@@ -210,6 +233,51 @@ class AuthService {
     return profile;
   }
 
+  /// Memeriksa apakah email telah terdaftar di database pengguna OrgaFlow (Firestore)
+  Future<bool> isEmailRegistered(String email) async {
+    final cleanEmail = email.trim().toLowerCase();
+    if (cleanEmail.isEmpty) return false;
+
+    try {
+      final query = await FirebaseFirestore.instance
+          .collection(AppConstants.usersCollection)
+          .where('email', isEqualTo: cleanEmail)
+          .limit(1)
+          .get();
+      return query.docs.isNotEmpty;
+    } catch (e) {
+      debugPrint('[AuthService] Error saat cek email terdaftar: $e');
+      return false;
+    }
+  }
+
+  /// Mengirim tautan pemulihan kata sandi (Password Reset Email) ke email pengguna
+  /// Hanya akan mengirimkan email jika alamat email telah terdaftar di aplikasi OrgaFlow.
+  Future<void> sendPasswordResetEmail({required String email}) async {
+    final cleanEmail = email.trim().toLowerCase();
+    if (cleanEmail.isEmpty) {
+      throw const AuthServiceException('Email wajib diisi.');
+    }
+
+    // Periksa apakah email terdaftar di database OrgaFlow
+    final isRegistered = await isEmailRegistered(cleanEmail);
+    if (!isRegistered) {
+      throw const AuthServiceException(
+        'Email belum terdaftar di aplikasi OrgaFlow. Silakan lakukan pendaftaran akun terlebih dahulu.',
+      );
+    }
+
+    try {
+      await _auth.sendPasswordResetEmail(email: cleanEmail);
+    } on FirebaseAuthException catch (e) {
+      throw AuthServiceException(AuthErrorMapper.mapFirebaseAuthError(e));
+    } catch (e) {
+      throw const AuthServiceException(
+        'Gagal mengirim email reset password. Periksa koneksi internet Anda.',
+      );
+    }
+  }
+
   /// Memperbarui password pada Firebase Authentication dan status wajib ganti password di Firestore
   Future<void> changePassword({required String newPassword}) async {
     final user = _auth.currentUser;
@@ -229,7 +297,9 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       throw AuthServiceException(AuthErrorMapper.mapFirebaseAuthError(e));
     } catch (e) {
-      throw const AuthServiceException('Gagal mengubah password pada sistem autentikasi.');
+      throw const AuthServiceException(
+        'Gagal mengubah password pada sistem autentikasi.',
+      );
     }
   }
 

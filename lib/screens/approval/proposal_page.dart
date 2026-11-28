@@ -28,6 +28,11 @@ class _ProposalPageState extends State<ProposalPage> {
   int _selectedFilterIndex =
       0; // 0: Semua, 1: Menunggu, 2: Disetujui, 3: Revisi/Ditolak
 
+  bool get _canCreateProposal =>
+      widget.role.isPengurus &&
+      widget.role != UserRole.ketua &&
+      widget.role != UserRole.dekan;
+
   String get _currentUid =>
       FirebaseAuth.instance.currentUser?.uid ?? widget.userProfile.uid;
 
@@ -189,42 +194,43 @@ class _ProposalPageState extends State<ProposalPage> {
               ),
             ),
 
-            // ===== FAB Bulat (+) Buat Pengajuan =====
-            Positioned(
-              right: 20,
-              bottom: 40,
-              child: GestureDetector(
-                onTap: () {
-                  CreateProposalModal.show(
-                    context,
-                    userProfile: widget.userProfile,
-                    onCreated: () => setState(() {}),
-                  );
-                },
-                child: Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryBlue,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primaryBlue.withValues(alpha: 0.35),
-                        blurRadius: 14,
-                        offset: const Offset(0, 6),
+            // ===== FAB Bulat (+) Buat Pengajuan (Hanya untuk pengurus yang berhak) =====
+            if (_canCreateProposal)
+              Positioned(
+                right: 20,
+                bottom: 40,
+                child: GestureDetector(
+                  onTap: () {
+                    CreateProposalModal.show(
+                      context,
+                      userProfile: widget.userProfile,
+                      onCreated: () => setState(() {}),
+                    );
+                  },
+                  child: Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryBlue,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primaryBlue.withValues(alpha: 0.35),
+                          blurRadius: 14,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.add_rounded,
+                        color: Colors.white,
+                        size: 26,
                       ),
-                    ],
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.add_rounded,
-                      color: Colors.white,
-                      size: 26,
                     ),
                   ),
                 ),
               ),
-            ),
           ],
         ),
       ),
